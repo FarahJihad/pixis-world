@@ -1,0 +1,150 @@
+<!doctype html>
+<html lang="ar">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#f2ded2">
+  <meta name="description" content="Meet PIXI in an interactive 3D world.">
+  <title>PIXI’s World</title>
+  <link rel="icon" href="./assets/pixi-icon.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="./style.css">
+  <link rel="modulepreload" href="./assets/world.js">
+</head>
+<body>
+  <svg class="icon-library" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+    <defs>
+      <path id="pixi-outline" pathLength="1" d="M-34-17C-36-26-36-39-32-41C-28-43-18-37-12-32C-4-34 4-34 12-32C19-37 28-42 32-40C36-38 36-27 34-17C39-11 42-4 42 4C49 8 53 14 50 19C47 25 42 24 37 21C34 27 29 31 25 34C31 36 32 43 26 46C21 49 12 48 8 43C3 44-3 44-8 43C-12 48-21 49-26 46C-32 43-31 36-25 34C-30 31-34 27-37 21C-42 24-47 25-50 19C-53 14-49 8-42 4C-42-4-39-11-34-17Z"/>
+    </defs>
+    <symbol id="icon-volume" viewBox="0 0 24 24">
+      <path d="M4 9v6h4l4 4V5L8 9H4Zm11-1a5.6 5.6 0 0 1 0 8m2.5-10.5a9.2 9.2 0 0 1 0 13"/>
+    </symbol>
+    <symbol id="icon-mute" viewBox="0 0 24 24">
+      <path d="M4 9v6h4l4 4V5L8 9H4Zm12 1 4 4m0-4-4 4"/>
+    </symbol>
+    <symbol id="icon-home" viewBox="0 0 24 24">
+      <path d="M3.5 10.5 12 4l8.5 6.5v8.2c0 .7-.6 1.3-1.3 1.3h-4.4v-5.4a1 1 0 0 0-1-1h-3.6a1 1 0 0 0-1 1V20H4.8c-.7 0-1.3-.6-1.3-1.3Z"/>
+    </symbol>
+    <symbol id="icon-notes" viewBox="0 0 24 24">
+      <path d="M6 4h10.5A1.5 1.5 0 0 1 18 5.5v13a1.5 1.5 0 0 1-1.5 1.5h-10A1.5 1.5 0 0 1 5 18.5v-13A1.5 1.5 0 0 1 6.5 4M8.5 4v16m3.5-11h3m-3 4h3m-3 4h2"/>
+    </symbol>
+    <symbol id="icon-gift" viewBox="0 0 24 24">
+      <path d="M5 11h14v9H5zm-1-4h16v4H4zm8 0v13m0-13H8.8A2 2 0 1 1 11 4.6L12 7Zm0 0h3.2A2 2 0 1 0 13 4.6L12 7Z"/>
+    </symbol>
+  </svg>
+  <div class="loading" id="loading">
+    <svg class="loading-cover" viewBox="-50 -50 100 100" preserveAspectRatio="xMidYMid slice" aria-hidden="true">
+      <defs>
+        <mask id="pixi-aperture" x="-50" y="-50" width="100" height="100" maskUnits="userSpaceOnUse">
+          <rect x="-50" y="-50" width="100" height="100" fill="white"/>
+          <use class="loading-cut" href="#pixi-outline" fill="black" transform="scale(0)"/>
+        </mask>
+      </defs>
+      <rect x="-50" y="-50" width="100" height="100" mask="url(#pixi-aperture)"/>
+    </svg>
+    <div class="loading-center">
+      <svg class="loading-sketch" viewBox="-60 -56 120 120" aria-hidden="true">
+        <defs><clipPath id="pixi-fill"><use href="#pixi-outline"/></clipPath></defs>
+        <use class="loading-ghost" href="#pixi-outline"/>
+        <g clip-path="url(#pixi-fill)"><rect class="loading-ink" x="-56" y="-52" width="112" height="104"/></g>
+        <use class="loading-trace" href="#pixi-outline"/>
+        <g class="loading-face">
+          <ellipse cx="-15" cy="4" rx="4.2" ry="5.2"/><ellipse cx="15" cy="4" rx="4.2" ry="5.2"/>
+          <path d="M-6 16Q0 22 6 16"/>
+          <path class="loading-blush" d="M-26 11h5m42 0h5"/>
+        </g>
+      </svg>
+      <div class="loading-counter" id="loading-counter" role="progressbar" aria-label="تحميل عالم بيكسي"
+        aria-valuemin="0" aria-valuemax="100" aria-valuenow="0" dir="rtl">
+        <span aria-hidden="true">جارٍ التحميل</span><span class="loading-value" aria-hidden="true"><bdi id="loading-value">0%</bdi></span>
+      </div>
+    </div>
+  </div>
+  <button class="round-button corner-sound" id="sound" type="button" aria-label="الصوت" aria-pressed="true">
+    <svg class="icon sound-on" aria-hidden="true"><use href="#icon-volume"/></svg>
+    <svg class="icon sound-off" aria-hidden="true"><use href="#icon-mute"/></svg>
+  </button>
+  <main class="world" data-screen="welcome" inert>
+    <button class="stage" id="stage" type="button" aria-label="تفاعل مع بيكسي" aria-description="اضغط على بيكسي لتتفاعل معك. اسحبها أو استخدم الأسهم لتدويرها، واضغط على Escape لإعادة المشهد." disabled></button>
+    <div class="frame" aria-hidden="true"><i></i><i></i><i></i><i></i></div>
+    <header class="brand" aria-label="PIXI">
+      <img src="./assets/pixi-icon.svg" alt="" width="23" height="23">
+      <span aria-hidden="true">PIXI</span>
+    </header>
+    <nav class="world-nav" aria-label="صفحات عالم بيكسي" dir="rtl">
+      <a href="#" data-destination="welcome" aria-current="page"><svg class="icon" aria-hidden="true"><use href="#icon-home"/></svg><span>البداية</span></a>
+      <a href="#emotions" data-destination="emotions"><svg class="icon" aria-hidden="true"><use href="#icon-notes"/></svg><span>المتطلبات</span></a>
+      <a href="#surprise" data-destination="surprise"><svg class="icon" aria-hidden="true"><use href="#icon-gift"/></svg><span>المفاجأة</span></a>
+    </nav>
+    <section class="intro" id="intro" dir="rtl" aria-labelledby="welcome-title" hidden>
+      <h1 id="welcome-title" aria-label="مرحبًا بكم، أنا PIXI">
+        <span class="intro-kicker" aria-hidden="true">مرحبًا بكم</span>
+        <span class="intro-title" aria-hidden="true"><span class="intro-ar">أنا</span>
+          <bdi class="pixi-name" id="pixi-name" dir="ltr"><span><span>P</span><i></i></span><span><span>I</span><i></i></span><span><span>X</span><i></i></span><span><span>I</span><i></i></span></bdi>
+        </span>
+      </h1>
+      <div class="intro-actions">
+        <button id="begin" type="button" disabled>يلا نبدأ</button>
+      </div>
+    </section>
+    <section class="chapter" id="emotions" dir="rtl" aria-labelledby="emotions-title" hidden>
+      <div class="chapter-panel">
+        <h1 id="emotions-title" tabindex="-1">المتطلبات</h1>
+        <div class="story-card">
+          <div class="story-header">
+            <p id="request-step"></p>
+            <button class="round-button" id="listen-request" type="button" aria-label="تشغيل مؤثّر الطلب"><svg class="icon" aria-hidden="true"><use href="#icon-volume"/></svg></button>
+          </div>
+          <blockquote id="request-line" tabindex="-1"></blockquote>
+          <div id="request-quiz">
+            <p class="request-prompt" id="request-prompt">شو المتطلّب اللي فهمتيه من كلامها؟</p>
+            <div class="request-choices" role="group" aria-labelledby="request-prompt">
+              <button type="button" data-choice="0"></button>
+              <button type="button" data-choice="1"></button>
+            </div>
+          </div>
+          <p id="request-feedback" role="status" hidden></p>
+          <button class="chapter-primary request-next" id="next" type="button" hidden></button>
+        </div>
+      </div>
+    </section>
+    <section class="maze" id="surprise" dir="rtl" aria-labelledby="surprise-title" hidden>
+      <div class="maze-shell">
+        <header class="maze-heading">
+          <div>
+            <h1 id="surprise-title" tabindex="-1">متاهة بيكسي</h1>
+            <p>بيكسي محبوسة! ساعدوها تفتح ثلاث بوابات وتلاقي المخرج.</p>
+          </div>
+          <p class="maze-progress" id="maze-progress" role="status">البوابات المفتوحة <strong dir="ltr">٠ / ٣</strong></p>
+        </header>
+        <div class="maze-grid" dir="ltr">
+          <figure class="maze-map" aria-label="خريطة المتاهة من البداية إلى المخرج">
+            <div class="maze-canvas" id="maze-canvas" aria-hidden="true"></div>
+            <figcaption class="maze-legend" dir="rtl">
+              <span data-maze-gate="0"><b>١</b> الرياضيات</span>
+              <span data-maze-gate="1"><b>٢</b> العلوم</span>
+              <span data-maze-gate="2"><b>٣</b> هندسة البرمجيات</span>
+            </figcaption>
+          </figure>
+          <div class="maze-card" id="maze-card" dir="rtl" data-phase="idle">
+            <p class="maze-step" id="maze-step">البداية</p>
+            <h2 id="maze-prompt" tabindex="-1">بيكسي عم تدور على المخرج…</h2>
+            <div class="maze-options" id="maze-options" role="group" aria-labelledby="maze-prompt" hidden>
+              <button type="button" data-maze-choice="0"><kbd aria-hidden="true">١</kbd><span></span></button>
+              <button type="button" data-maze-choice="1"><kbd aria-hidden="true">٢</kbd><span></span></button>
+              <button type="button" data-maze-choice="2"><kbd aria-hidden="true">٣</kbd><span></span></button>
+            </div>
+            <p class="maze-feedback" id="maze-feedback" role="status" hidden></p>
+            <button class="chapter-primary maze-restart" id="maze-restart" type="button" hidden>نعيد التحدّي</button>
+            <div id="request-summary" hidden>
+              <h3>المتطلّبات اللي جمعتوها</h3>
+              <ul id="saved-requests"></ul>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+    <p id="status" role="status" class="sr-only"></p>
+  </main>
+  <script type="module" src="./assets/world.js"></script>
+</body>
+</html>
