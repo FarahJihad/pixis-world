@@ -27,8 +27,9 @@
     <symbol id="icon-notes" viewBox="0 0 24 24">
       <path d="M6 4h10.5A1.5 1.5 0 0 1 18 5.5v13a1.5 1.5 0 0 1-1.5 1.5h-10A1.5 1.5 0 0 1 5 18.5v-13A1.5 1.5 0 0 1 6.5 4M8.5 4v16m3.5-11h3m-3 4h3m-3 4h2"/>
     </symbol>
-    <symbol id="icon-gift" viewBox="0 0 24 24">
-      <path d="M5 11h14v9H5zm-1-4h16v4H4zm8 0v13m0-13H8.8A2 2 0 1 1 11 4.6L12 7Zm0 0h3.2A2 2 0 1 0 13 4.6L12 7Z"/>
+    <symbol id="icon-mystery" viewBox="0 0 24 24">
+      <path d="M5 10h14v10H5zm-1 0V7.5A1.5 1.5 0 0 1 5.5 6H18a1 1 0 0 1 1 1v3m-7 3v3"/>
+      <circle cx="12" cy="12.8" r=".65" fill="currentColor" stroke="none"/>
     </symbol>
   </svg>
   <div class="loading" id="loading">
@@ -73,7 +74,7 @@
     <nav class="world-nav" aria-label="صفحات عالم بيكسي" dir="rtl">
       <a href="#" data-destination="welcome" aria-current="page"><svg class="icon" aria-hidden="true"><use href="#icon-home"/></svg><span>البداية</span></a>
       <a href="#emotions" data-destination="emotions"><svg class="icon" aria-hidden="true"><use href="#icon-notes"/></svg><span>المتطلبات</span></a>
-      <a href="#surprise" data-destination="surprise"><svg class="icon" aria-hidden="true"><use href="#icon-gift"/></svg><span>المفاجأة</span></a>
+      <a href="#surprise" data-destination="surprise"><svg class="icon" aria-hidden="true"><use href="#icon-mystery"/></svg><span>السر</span></a>
     </nav>
     <section class="intro" id="intro" dir="rtl" aria-labelledby="welcome-title" hidden>
       <h1 id="welcome-title" aria-label="مرحبًا بكم، أنا PIXI">
@@ -107,39 +108,56 @@
         </div>
       </div>
     </section>
-    <section class="maze" id="surprise" dir="rtl" aria-labelledby="surprise-title" hidden>
+    <section class="maze" id="surprise" dir="rtl" aria-labelledby="surprise-title" data-phase="intro" hidden>
       <div class="maze-shell">
         <header class="maze-heading">
-          <div>
+          <div class="maze-title">
             <h1 id="surprise-title" tabindex="-1">متاهة بيكسي</h1>
-            <p>بيكسي محبوسة! ساعدوها تفتح ثلاث بوابات وتلاقي المخرج.</p>
+            <p id="maze-instruction" role="status" hidden></p>
           </div>
           <p class="maze-progress" id="maze-progress" role="status">البوابات المفتوحة <strong dir="ltr">٠ / ٣</strong></p>
         </header>
-        <div class="maze-grid" dir="ltr">
-          <figure class="maze-map" aria-label="خريطة المتاهة من البداية إلى المخرج">
-            <div class="maze-canvas" id="maze-canvas" aria-hidden="true"></div>
-            <figcaption class="maze-legend" dir="rtl">
-              <span data-maze-gate="0"><b>١</b> الرياضيات</span>
-              <span data-maze-gate="1"><b>٢</b> العلوم</span>
-              <span data-maze-gate="2"><b>٣</b> هندسة البرمجيات</span>
-            </figcaption>
-          </figure>
-          <div class="maze-card" id="maze-card" dir="rtl" data-phase="idle">
-            <p class="maze-step" id="maze-step">البداية</p>
-            <h2 id="maze-prompt" tabindex="-1">بيكسي عم تدور على المخرج…</h2>
-            <div class="maze-options" id="maze-options" role="group" aria-labelledby="maze-prompt" hidden>
-              <button type="button" data-maze-choice="0"><kbd aria-hidden="true">١</kbd><span></span></button>
-              <button type="button" data-maze-choice="1"><kbd aria-hidden="true">٢</kbd><span></span></button>
-              <button type="button" data-maze-choice="2"><kbd aria-hidden="true">٣</kbd><span></span></button>
-            </div>
-            <p class="maze-feedback" id="maze-feedback" role="status" hidden></p>
-            <button class="chapter-primary maze-restart" id="maze-restart" type="button" hidden>نعيد التحدّي</button>
-            <div id="request-summary" hidden>
-              <h3>المتطلّبات اللي جمعتوها</h3>
-              <ul id="saved-requests"></ul>
-            </div>
+        <figure class="maze-map" aria-label="متاهة بيكسي من الأعلى، من المدخل إلى المخرج">
+          <div class="maze-canvas" id="maze-canvas" aria-hidden="true"></div>
+        </figure>
+      </div>
+      <div class="emergency-scene" id="emergency-scene" dir="rtl" aria-labelledby="emergency-title">
+        <div class="emergency-beacons" aria-hidden="true"><i></i><i></i><i></i><i></i></div>
+        <div class="emergency-message">
+          <svg class="emergency-mark" viewBox="0 0 100 100" aria-hidden="true">
+            <path d="M50 8 94 86H6L50 8Z"/>
+            <path d="M50 35v24m0 12v1"/>
+          </svg>
+          <p class="emergency-label" id="emergency-title">تنبيه!</p>
+          <div class="emergency-bubble" role="status">
+            <span>بنااات! ساعدوني! انحبست في متاهة وما عرفت أطلع منها! فيه ثلاث بوابات مقفلة، وما أقدر أفتحها بدون مساعدتكم!</span>
           </div>
+          <button class="emergency-primary" id="maze-begin" type="button">يلا ننقذ بيكسي!</button>
+        </div>
+      </div>
+      <div class="maze-modal-backdrop" id="maze-question-backdrop" hidden>
+        <section class="maze-modal" role="dialog" aria-modal="true" aria-labelledby="maze-step" aria-describedby="maze-prompt">
+          <p class="maze-step" id="maze-step"></p>
+          <h2 id="maze-modal-title">فكّروا مع بيكسي</h2>
+          <p id="maze-prompt" tabindex="-1"></p>
+          <div class="maze-options" id="maze-options" role="group" aria-labelledby="maze-modal-title">
+            <button type="button" data-maze-choice="0"><kbd aria-hidden="true">١</kbd><span></span></button>
+            <button type="button" data-maze-choice="1"><kbd aria-hidden="true">٢</kbd><span></span></button>
+            <button type="button" data-maze-choice="2"><kbd aria-hidden="true">٣</kbd><span></span></button>
+          </div>
+          <p class="maze-feedback" id="maze-feedback" role="status" hidden></p>
+        </section>
+      </div>
+      <div class="maze-victory" id="maze-victory" hidden>
+        <div class="victory-card" role="status">
+          <p class="victory-kicker" dir="ltr">MISSION COMPLETE!</p>
+          <h2>مبروك يا مهندسات المستقبل!</h2>
+          <p class="victory-dialogue">يااااي! طلعت من المتاهة! شكرًا يا أحلى مهندسات برمجيات!</p>
+          <div id="request-summary" hidden>
+            <h3>المتطلّبات اللي جمعتوها</h3>
+            <ul id="saved-requests"></ul>
+          </div>
+          <button class="chapter-primary maze-restart" id="maze-restart" type="button">نعيد التجربة</button>
         </div>
       </div>
     </section>

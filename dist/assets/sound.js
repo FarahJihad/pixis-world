@@ -103,10 +103,49 @@ export function createSound() {
     if (bus) bus.gain.setTargetAtTime(enabled ? .56 : 0, context.currentTime, .025);
   }
 
+  function startEmergencyAlarm() {
+    if (!unlock()) return () => {};
+    const when = context.currentTime + .015;
+    const volume = context.createGain();
+    const sources = [];
+    volume.gain.setValueAtTime(.34, when);
+    volume.gain.setTargetAtTime(.0001, when + 1.65, .12);
+    volume.connect(bus);
+    for (let index = 0; index < 4; index++) {
+      const start = when + index * .46;
+      const length = .38;
+      const tone = context.createOscillator();
+      const envelope = context.createGain();
+      tone.type = 'triangle';
+      tone.frequency.setValueAtTime(420, start);
+      tone.frequency.exponentialRampToValueAtTime(610, start + length * .52);
+      tone.frequency.exponentialRampToValueAtTime(420, start + length);
+      envelope.gain.setValueAtTime(.0001, start);
+      envelope.gain.exponentialRampToValueAtTime(.18, start + .025);
+      envelope.gain.exponentialRampToValueAtTime(.0001, start + length);
+      tone.connect(envelope).connect(volume);
+      tone.start(start);
+      tone.stop(start + length);
+      sources.push(tone);
+    }
+    let stopped = false;
+    return () => {
+      if (stopped) return;
+      stopped = true;
+      const now = context.currentTime;
+      volume.gain.cancelScheduledValues(now);
+      volume.gain.setTargetAtTime(.0001, now, .025);
+      for (const source of sources) {
+        try { source.stop(now + .12); } catch {}
+      }
+    };
+  }
+
   return {
     get enabled() { return enabled; },
     prepareAutomatic,
     canPlayAutomatically,
+    startEmergencyAlarm,
     prepareTyping: unlock,
     typingTick(index) {
       if (!context || !enabled) return;

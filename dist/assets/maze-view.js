@@ -151,7 +151,7 @@ function makeConfetti(scene) {
   };
 }
 
-export function createMazeView(model) {
+export function createMazeView(model, onCharacterClick) {
   const target = document.querySelector('#maze-canvas');
   let renderer;
   try {
@@ -163,23 +163,44 @@ export function createMazeView(model) {
   renderer.outputColorSpace = T.SRGBColorSpace;
   renderer.toneMapping = T.ACESFilmicToneMapping;
   renderer.toneMappingExposure = 1.0;
+  renderer.shadowMap.enabled = true;
+  renderer.shadowMap.type = T.PCFShadowMap;
   renderer.domElement.setAttribute('aria-hidden', 'true');
   target.append(renderer.domElement);
 
   const scene = new T.Scene();
-  scene.background = new T.Color(0xe9d7ef);
-  scene.add(new T.HemisphereLight(0xfff2ed, 0xc4acdd, 1.30));
-  const sun = new T.DirectionalLight(0xffeee6, 2.08);
+  const emergencyColor = new T.Color(0x260710);
+  const pastelColor = new T.Color(0xe9d7ef);
+  scene.background = emergencyColor.clone();
+  const hemisphere = new T.HemisphereLight(0xff8991, 0x321321, .82);
+  scene.add(hemisphere);
+  const sun = new T.DirectionalLight(0xffc7b9, 1.64);
   sun.position.set(-5, 12, 6);
+  sun.castShadow = true;
+  sun.shadow.mapSize.set(768, 768);
+  Object.assign(sun.shadow.camera, { left: -8, right: 8, top: 8, bottom: -8, near: .1, far: 35 });
+  sun.shadow.camera.updateProjectionMatrix();
   scene.add(sun);
-  const camera = new T.OrthographicCamera(-7, 7, 4, -4, .1, 70);
-  camera.position.set(0, 12.8, 10.4);
-  camera.lookAt(0, .1, 0);
-  tiles(scene);
-  const doors = gates.map((item, index) => createGate(scene, camera, item, index));
-  sign(scene, camera, 'البداية', '#ecd7f5', [1.19, .54], [-5.17, .26, 2.88]);
-  const exit = sign(scene, camera, 'المخرج', '#d6e9dc', [1.08, .52], [5.79, .61, 2.49]);
-  const confetti = makeConfetti(scene);
+  const alarmA = new T.PointLight(0xff172c, 18, 10, 2);
+  const alarmB = new T.PointLight(0xff3d42, 13, 9, 2);
+  scene.add(alarmA, alarmB);
+  const mapRoot = new T.Group();
+  scene.add(mapRoot);
+  const camera = new T.OrthographicCamera(-4, 4, 2.5, -2.5, .1, 70);
+  camera.up.set(0, 0, -1);
+  camera.position.set(0, 17, 0);
+  camera.lookAt(0, .35, 0);
+  tiles(mapRoot);
+  const doors = gates.map((item, index) => createGate(mapRoot, camera, item, index));
+  sign(mapRoot, camera, 'البداية', '#ecd7f5', [1.19, .54], [-5.17, .26, 2.88]);
+  const exit = sign(mapRoot, camera, 'المخرج', '#d6e9dc', [1.08, .52], [5.79, .61, 2.49]);
+  const confetti = makeConfetti(mapRoot);
+  const introFloor = new T.Mesh(new T.PlaneGeometry(24, 18),
+    new T.MeshStandardMaterial({ color: 0x35111b, roughness: .96, transparent: true }));
+  introFloor.rotation.x = -Math.PI / 2;
+  introFloor.position.y = -.025;
+  introFloor.receiveShadow = true;
+  scene.add(introFloor);
   const pixi = model;
   pixi.scale.setScalar(.257);
   scene.add(pixi);
@@ -188,16 +209,50 @@ export function createMazeView(model) {
   shadow.rotation.x = -Math.PI / 2;
   scene.add(shadow);
   const skirt = new T.Mesh(new T.RingGeometry(.381, .413, 32),
-    new T.MeshBasicMaterial({ color: 0xffffff, transparent: true, opacity: .84, side: T.DoubleSide }));
+    new T.MeshBasicMaterial({ color: 0xf6e5ff, transparent: true, opacity: 0, side: T.DoubleSide }));
   skirt.rotation.x = -Math.PI / 2;
   scene.add(skirt);
-  const rArm = pixi.getObjectByName('Right_Arm');
-  const rightRest = rArm?.position.clone();
+  const rightArm = pixi.getObjectByName('Right Arm');
+  const leftArm = pixi.getObjectByName('Left Arm');
+  const leftFoot = pixi.getObjectByName('Left Foot');
+  const rightFoot = pixi.getObjectByName('Right Foot');
   const smile = pixi.getObjectByName('Smile');
-  const frown = pixi.getObjectByName('Sad_mouth');
-  let width = 0, height = 0, angle = 0;
+  const frown = pixi.getObjectByName('Sad mouth');
+  const brows = ['Left Brow', 'Right Brow'].map((name) => pixi.getObjectByName(name));
+  const browRest = brows.map((brow) => brow?.position.z ?? 0);
+  const rightRest = rightArm?.position.clone();
+  const leftRest = leftArm?.position.clone();
+  const frownRest = frown?.position.z ?? 0;
+  const smileRest = smile?.position.z ?? 0;
+  const cameraStart = new T.Vector3(0, 4, 7.8);
+  const cameraMap = new T.Vector3(0, 17, 0);
+  const cameraTarget = new T.Vector3(0, .35, 0);
+  const introUp = new T.Vector3(0, 1, 0);
+  const mapUp = new T.Vector3(0, 0, -1);
+  const raycaster = new T.Raycaster();
+  const pointer = new T.Vector2();
+  let width = 0, height = 0, angle = 0, previousBlend = -1;
 
+  function hitCharacter(event, state) {
+    if (state.phase !== 'waiting') return false;
+    const bounds = renderer.domElement.getBoundingClientRect();
+    pointer.set((event.clientX - bounds.left) / bounds.width * 2 - 1,
+      1 - (event.clientY - bounds.top) / bounds.height * 2);
+    raycaster.setFromCamera(pointer, camera);
+    return raycaster.intersectObject(pixi, true).length > 0;
+  }
+
+  renderer.domElement.addEventListener('pointermove', (event) => {
+    renderer.domElement.style.cursor = hitCharacter(event, currentState) ? 'pointer' : '';
+  });
+  renderer.domElement.addEventListener('pointerleave', () => { renderer.domElement.style.cursor = ''; });
+  renderer.domElement.addEventListener('click', (event) => {
+    if (hitCharacter(event, currentState)) onCharacterClick();
+  });
+
+  let currentState = { phase: 'intro' };
   return (state, delta, effects) => {
+    currentState = state;
     const w = target.clientWidth, h = target.clientHeight;
     if (!w || !h) return;
     if (w !== width || h !== height) {
@@ -205,15 +260,49 @@ export function createMazeView(model) {
       height = h;
       renderer.setPixelRatio(Math.min(devicePixelRatio, 1.7));
       renderer.setSize(width, height, false);
-      const horizontal = Math.max(13.55, 6.30 * width / height);
+      const aspect = width / height;
+      const blend = state.sceneBlend;
+      const mapHeight = Math.max(7.45, 13.15 / aspect);
+      const introHeight = Math.max(4.7, 7.3 / aspect);
+      const vertical = T.MathUtils.lerp(introHeight, mapHeight, blend);
+      const horizontal = vertical * aspect;
       camera.left = -horizontal / 2;
       camera.right = horizontal / 2;
-      camera.top = horizontal * height / width / 2;
+      camera.top = vertical / 2;
       camera.bottom = -camera.top;
       camera.updateProjectionMatrix();
     }
+    if (Math.abs(state.sceneBlend - previousBlend) > .003) {
+      previousBlend = state.sceneBlend;
+      const vertical = T.MathUtils.lerp(Math.max(4.7, 7.3 * height / width),
+        Math.max(7.45, 13.15 * height / width), state.sceneBlend);
+      const horizontal = vertical * width / height;
+      camera.left = -horizontal / 2;
+      camera.right = horizontal / 2;
+      camera.top = vertical / 2;
+      camera.bottom = -camera.top;
+      camera.updateProjectionMatrix();
+    }
+    const blend = state.sceneBlend;
+    scene.background.copy(emergencyColor).lerp(pastelColor, blend);
+    introFloor.material.opacity = 1 - blend;
+    introFloor.visible = blend < .99;
+    hemisphere.color.set(0xff8991).lerp(new T.Color(0xfff2ed), blend);
+    hemisphere.groundColor.set(0x321321).lerp(new T.Color(0xc4acdd), blend);
+    hemisphere.intensity = T.MathUtils.lerp(.82, 1.3, blend);
+    sun.intensity = T.MathUtils.lerp(1.64, 2.08, blend);
+    alarmA.intensity = (1 - blend) * (12 + Math.sin(state.clocks * 2.1) * 2);
+    alarmB.intensity = (1 - blend) * (9 + Math.sin(state.clocks * 2.1 + Math.PI) * 2);
+    alarmA.position.set(Math.sin(state.clocks * .62) * 3.4, 3.4, Math.cos(state.clocks * .62) * 2.4);
+    alarmB.position.set(-alarmA.position.x, 2.8, -alarmA.position.z);
+    mapRoot.visible = blend > .015;
+    mapRoot.scale.setScalar(Math.max(.001, blend));
+    camera.position.lerpVectors(cameraStart, cameraMap, blend);
+    camera.up.lerpVectors(introUp, mapUp, blend).normalize();
+    camera.lookAt(cameraTarget);
     for (const [i, gate] of doors.entries()) {
-      gate.raised = effects ? T.MathUtils.lerp(gate.raised, state.opened[i] ? 1 : 0, 1 - Math.exp(-delta * 8)) : Number(!!state.opened[i]);
+      const unlocked = i < state.gate || (i === state.gate && state.phase === 'opening');
+      gate.raised = effects ? T.MathUtils.lerp(gate.raised, unlocked ? 1 : 0, 1 - Math.exp(-delta * 8)) : Number(unlocked);
       gate.door.position.y = gate.raised * .76;
       gate.door.visible = gate.raised < .95;
       gate.badge.material.opacity = 1 - gate.raised * .48;
@@ -224,26 +313,43 @@ export function createMazeView(model) {
     const along = state.position - index;
     const [x0, z0] = trail[index];
     const [x1, z1] = trail[index + 1];
-    const x = T.MathUtils.lerp(x0, x1, along);
-    const z = T.MathUtils.lerp(z0, z1, along);
-    const walk = effects && state.phase === 'travel' ? Math.abs(Math.sin(state.clocks * 20)) * .075 : 0;
+    const routeX = T.MathUtils.lerp(x0, x1, along);
+    const routeZ = T.MathUtils.lerp(z0, z1, along);
+    const x = T.MathUtils.lerp(0, routeX, blend);
+    const z = T.MathUtils.lerp(0, routeZ, blend);
+    const walking = state.phase === 'walking';
+    const walk = effects && walking ? Math.abs(Math.sin(state.clocks * 15)) * .075 : 0;
     const celebrating = effects && state.phase === 'escaped' ? Math.max(0, 1 - (state.clocks - state.escapedAt) / 2.2) : 0;
     const jump = celebrating * Math.abs(Math.sin((state.clocks - state.escapedAt) * 9)) * .28;
-    const facing = state.phase === 'travel' ? (x1 > x0 ? .32 : z1 > z0 ? 0 : -.20) : 0;
+    const facing = walking ? (x1 > x0 ? .32 : z1 > z0 ? 0 : -.20) : 0;
     angle = T.MathUtils.lerp(angle, facing, 1 - Math.exp(-delta * 12));
+    const introScale = T.MathUtils.lerp(.40, .257, blend);
+    pixi.scale.setScalar(introScale);
     pixi.position.set(x, .344 + walk + jump, z);
     pixi.rotation.y = angle;
-    if (smile && frown) {
-      const trapped = state.phase !== 'escaped';
-      smile.position.z = trapped ? -.14 : 0;
-      frown.position.z = trapped ? .126 : 0;
+    const worried = state.phase !== 'escaped';
+    if (smile) smile.position.z = worried ? smileRest - .14 : smileRest;
+    if (frown) frown.position.z = worried ? frownRest + .126 : frownRest;
+    for (const [i, brow] of brows.entries()) {
+      if (!brow) continue;
+      brow.position.z = browRest[i] + (worried ? .09 : 0);
+      brow.rotation.z = (i === 0 ? -.24 : .24) * (worried ? 1 : 0);
     }
     shadow.position.set(x, .039, z);
     skirt.position.set(x, .041, z);
-    if (rArm) {
-      rArm.rotation.z = celebrating * (1.35 + Math.sin(state.clocks * 15) * .22);
-      rArm.position.set(rightRest.x + .18 * celebrating, rightRest.y + .36 * celebrating, rightRest.z + .18 * celebrating);
+    const ringPulse = effects && state.phase === 'waiting' ? (1 + Math.sin(state.clocks * 2.8) * .075) : 1;
+    skirt.visible = state.phase === 'waiting' && blend > .95;
+    skirt.scale.setScalar(ringPulse);
+    skirt.material.opacity = state.phase === 'waiting' ? .64 + Math.sin(state.clocks * 2.8) * .14 : 0;
+    if (rightArm && rightRest && leftArm && leftRest) {
+      const stride = walking && effects ? Math.sin(state.clocks * 15) * .22 : 0;
+      rightArm.rotation.z = celebrating * (1.35 + Math.sin(state.clocks * 15) * .22) + stride;
+      leftArm.rotation.z = -stride - celebrating * .48;
+      rightArm.position.set(rightRest.x + .18 * celebrating, rightRest.y + .36 * celebrating, rightRest.z + .18 * celebrating);
+      leftArm.position.copy(leftRest);
     }
+    if (leftFoot) leftFoot.rotation.x = walking ? Math.sin(state.clocks * 15) * .31 : 0;
+    if (rightFoot) rightFoot.rotation.x = walking ? -Math.sin(state.clocks * 15) * .31 : 0;
     confetti(celebrating > 0 ? state.clocks - state.escapedAt : -1);
     renderer.render(scene, camera);
   };

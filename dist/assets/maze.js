@@ -34,71 +34,90 @@ const digits = '٠١٢٣';
 const last = route.length - 1;
 
 export function createMazeGame(sound) {
-  const card = document.querySelector('#maze-card');
-  const prompt = document.querySelector('#maze-prompt');
-  const step = document.querySelector('#maze-step');
+  const chapter = document.querySelector('#surprise');
   const progress = document.querySelector('#maze-progress strong');
-  const list = document.querySelector('#maze-options');
+  const instruction = document.querySelector('#maze-instruction');
+  const backdrop = document.querySelector('#maze-question-backdrop');
+  const step = document.querySelector('#maze-step');
+  const prompt = document.querySelector('#maze-prompt');
   const feedback = document.querySelector('#maze-feedback');
+  const victory = document.querySelector('#maze-victory');
+  const choices = [...document.querySelectorAll('[data-maze-choice]')];
+  const begin = document.querySelector('#maze-begin');
+  const emergencyScene = document.querySelector('#emergency-scene');
   const restart = document.querySelector('#maze-restart');
-  const choices = [...list.querySelectorAll('button')];
-  const markers = [...document.querySelectorAll('[data-maze-gate]')];
   const reduced = matchMedia('(prefers-reduced-motion: reduce)');
-  const state = { phase: 'idle', position: 0, gate: 0, clocks: 0, escapedAt: 0, opened: [] };
+  const state = {
+    phase: 'intro', position: 0, gate: 0, clocks: 0, escapedAt: 0,
+    opened: [], sceneBlend: 0
+  };
   let active = false, frame = 0, previous = 0, advanceAt = 0;
-
-  function effect(name) {
-    if (sound.canPlayAutomatically()) sound.play(name);
-  }
+  let answerLocked = false, stopAlarm;
 
   function refresh() {
-    const phase = state.phase;
-    const done = phase === 'escaped';
-    const questioning = phase === 'question';
-    const gate = gates[state.gate];
-    card.dataset.phase = phase;
-    list.hidden = !questioning;
-    feedback.hidden = true;
-    restart.hidden = !done;
+    const questioning = state.phase === 'question';
+    const question = gates[state.gate];
+    chapter.dataset.phase = state.phase;
+    emergencyScene.setAttribute('aria-hidden', String(state.phase !== 'intro'));
+    begin.disabled = state.phase !== 'intro';
     progress.textContent = digits[state.opened.filter(Boolean).length] + ' / ٣';
-    for (const [i, marker] of markers.entries()) marker.toggleAttribute('data-open', !!state.opened[i]);
-    if (done) {
-      step.textContent = 'البوابات الثلاث مفتوحة';
-      prompt.textContent = 'طلعت بيكسي من المتاهة!';
-      feedback.textContent = 'أجبتوا صح عند البوابات الثلاث وساعدتوها تلاقي المخرج.';
-      feedback.hidden = false;
-      prompt.focus({ preventScroll: true });
-    } else if (questioning || phase === 'opening') {
-      step.textContent = 'البوابة ' + digits[state.gate + 1] + ' · ' + gate.topic;
-      prompt.textContent = questioning ? gate.question : 'صح! انفتحت البوابة.';
-      if (questioning) {
-        for (const [i, button] of choices.entries()) {
-          button.querySelector('span').textContent = gate.choices[i];
-          button.removeAttribute('data-wrong');
-        }
+    instruction.hidden = state.phase !== 'waiting';
+    if (state.phase === 'waiting') {
+      instruction.textContent = state.gate === 0
+        ? 'اضغطوا على بيكسي عشان تتحرك!'
+        : state.gate < gates.length
+          ? 'اضغطوا على بيكسي عشان تفتحوا البوابة التالية!'
+          : 'اضغطوا على بيكسي عشان تهرب!';
+    }
+    backdrop.hidden = !questioning;
+    victory.hidden = state.phase !== 'escaped';
+    feedback.hidden = true;
+    for (const button of choices) {
+      button.removeAttribute('data-wrong');
+      button.removeAttribute('data-correct');
+    }
+    answerLocked = false;
+    if (questioning) {
+      step.textContent = 'البوابة ' + digits[state.gate + 1] + ' · ' + question.topic;
+      prompt.textContent = question.question;
+      for (const [index, button] of choices.entries()) {
+        button.querySelector('span').textContent = question.choices[index];
       }
       prompt.focus({ preventScroll: true });
-    } else {
-      step.textContent = state.gate < gates.length ? (state.gate === 0 ? 'البداية' : 'الطريق مفتوح') : 'آخر خطوة';
-      prompt.textContent = state.gate < gates.length ? 'بيكسي بطريقها للبوابة ' + digits[state.gate + 1] + '…' : 'بيكسي قربت توصل للمخرج!';
+    } else if (state.phase === 'escaped') {
+      document.querySelector('#maze-restart').focus({ preventScroll: true });
     }
   }
 
   function answer(index) {
-    if (!active || state.phase !== 'question') return;
-    const gate = gates[state.gate];
-    if (index !== gate.correct) {
-      for (const [i, button] of choices.entries()) button.toggleAttribute('data-wrong', i === index);
-      feedback.textContent = 'جرّبوا مرة تانية. ' + gate.hint;
+    if (!active || state.phase !== 'question' || answerLocked) return;
+    const question = gates[state.gate];
+    const selected = choices[index];
+    if (!selected) return;
+    for (const button of choices) {
+      button.removeAttribute('data-wrong');
+      button.removeAttribute('data-correct');
+    }
+    if (index !== question.correct) {
+      selected.setAttribute('data-wrong', '');
+      feedback.textContent = 'قريبة! ' + question.hint + ' جرّبوا مرة ثانية.';
       feedback.hidden = false;
       sound.play('retry');
       return;
     }
+    answerLocked = true;
+    selected.setAttribute('data-correct', '');
+    feedback.textContent = 'إجابة صحيحة!';
+    feedback.hidden = false;
     state.opened[state.gate] = true;
-    state.phase = 'opening';
-    advanceAt = state.clocks + (reduced.matches ? .24 : .72);
-    refresh();
+    advanceAt = state.clocks + (reduced.matches ? .2 : .68);
     sound.play('accept');
+  }
+
+  function clickCharacter() {
+    if (!active || state.phase !== 'waiting') return;
+    state.phase = 'walking';
+    refresh();
   }
 
   function tick(now) {
@@ -106,35 +125,55 @@ export function createMazeGame(sound) {
     const delta = Math.min(.07, (now - previous) / 1000);
     previous = now;
     state.clocks += delta;
-    if (state.phase === 'travel') {
+    if (state.phase !== 'intro' && state.sceneBlend < 1) {
+      state.sceneBlend = Math.min(1, state.sceneBlend + delta / (reduced.matches ? .18 : .95));
+    }
+    if (state.phase === 'walking') {
       const stop = gates[state.gate]?.at ?? last;
       state.position = reduced.matches ? stop : Math.min(stop, state.position + delta * 2.75);
       if (state.position === stop) {
         if (stop === last) {
           state.phase = 'escaped';
           state.escapedAt = state.clocks;
-          effect('gift');
+          sound.play('gift');
         } else {
           state.phase = 'question';
-          effect('nav');
+          sound.play('nav');
         }
         refresh();
       }
+    } else if (state.phase === 'question' && answerLocked && state.clocks >= advanceAt) {
+      state.phase = 'opening';
+      advanceAt = state.clocks + (reduced.matches ? .12 : .74);
+      backdrop.hidden = true;
+      refresh();
     } else if (state.phase === 'opening' && state.clocks >= advanceAt) {
       state.gate += 1;
-      state.phase = 'travel';
+      state.phase = 'waiting';
       refresh();
     }
     frame = requestAnimationFrame(tick);
   }
 
   function reset() {
-    Object.assign(state, { phase: 'travel', position: 0, gate: 0, clocks: 0, escapedAt: 0, opened: [] });
+    stopAlarm?.();
+    Object.assign(state, {
+      phase: 'intro', position: 0, gate: 0, clocks: 0, escapedAt: 0,
+      opened: [], sceneBlend: 0
+    });
     refresh();
+    if (active) stopAlarm = sound.startEmergencyAlarm();
   }
 
+  begin.addEventListener('click', () => {
+    if (!active || state.phase !== 'intro') return;
+    stopAlarm?.();
+    stopAlarm = undefined;
+    state.phase = 'waiting';
+    refresh();
+  });
   choices.forEach((button, index) => button.addEventListener('click', () => answer(index)));
-  restart.addEventListener('click', () => { reset(); effect('nav'); prompt.focus({ preventScroll: true }); });
+  restart.addEventListener('click', () => reset());
   document.addEventListener('keydown', (event) => {
     if (!active || state.phase !== 'question' || event.altKey || event.ctrlKey || event.metaKey || event.repeat) return;
     const key = '123'.indexOf(event.key);
@@ -146,16 +185,20 @@ export function createMazeGame(sound) {
 
   return {
     state,
+    clickCharacter,
     enter() {
       if (active) return;
       active = true;
-      if (state.phase === 'idle') reset();
+      reset();
       previous = performance.now();
       frame = requestAnimationFrame(tick);
     },
     leave() {
       active = false;
       cancelAnimationFrame(frame);
+      stopAlarm?.();
+      stopAlarm = undefined;
+      reset();
     }
   };
 }

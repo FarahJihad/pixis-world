@@ -6,7 +6,7 @@ A browser-based 3D workshop with Welcome, Requests, and Surprise screens. PIXI�
 
 The prebuilt site is in `dist/`. With Node.js installed, run `node scripts/serve.mjs` from the project folder and open `http://127.0.0.1:4173`. The separately supplied standalone HTML preview can also open directly in a WebGL 2 browser.
 
-The workshop opens automatically when loaded. The speaker icon in the corner controls sound during loading and play. Browsers that permit autoplay can play the arrival cue immediately. Otherwise the game opens silently and sound becomes available through interaction. PIXI waves as her name resolves from scrambled letters. Click or tap PIXI to trigger an effect. Drag her to inspect the model from any side, or use the arrow keys when the scene is focused. In Requirements, read PIXI’s written dialogue and pick the requirement she describes. In Surprise, PIXI walks automatically through a 3D maze and stops at three question gates. Click a choice or use keys 1–3. Wrong answers leave the gate locked and show a hint. Correct answers open the gates. Any collected requirements appear after the escape.
+The workshop opens automatically when loaded. The speaker icon in the corner controls sound during loading and play. Browsers that permit autoplay can play the arrival cue immediately. Otherwise the game opens silently and sound becomes available through interaction. PIXI waves as her name resolves from scrambled letters. Click or tap PIXI to trigger an effect. Drag her to inspect the model from any side, or use the arrow keys when the scene is focused. In Requirements, read PIXI’s written dialogue and pick the requirement she describes. In **السر**, PIXI first asks for help in a short emergency scene. Click her in the overhead 3D maze whenever you want her to walk to the next gate. Answer each question by clicking an option or using keys 1–3; wrong answers show a hint and keep the gate locked. After all three gates open, click PIXI once more to reach the exit.
 
 ## Edit the project
 
@@ -16,7 +16,7 @@ The workshop opens automatically when loaded. The speaker icon in the corner con
 | `dist/assets/world.js` | Lighting, camera, input, and character animation |
 | `dist/assets/loading.js`, `dist/assets/chapters.js`, and `dist/assets/dialogue.js` | Opening, screen navigation, and the Arabic greeting |
 | `dist/assets/sound.js` | Synthesized effects |
-| `dist/assets/maze.js` and `dist/assets/maze-view.js` | Editable questions, gate logic, and the 3D maze |
+| `dist/assets/maze.js` and `dist/assets/maze-view.js` | Editable questions, presenter-controlled gate logic, and the 3D maze |
 | `dist/assets/scenery.js` | The workshop, arched window, furniture, plants, and rug |
 | `dist/assets/requirements.js` | PIXI’s dialogue, requirement activity, and collected summary |
 | `scripts/model.mjs` | Procedural PIXI sculpt and editable facial, arm, and foot parts |
