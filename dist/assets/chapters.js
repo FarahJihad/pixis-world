@@ -121,7 +121,7 @@ export function createChapters(world, status) {
   return {
     state,
     sound,
-    maze: maze.state,
+    maze,
     ready() {
       ready = true;
       syncSound();

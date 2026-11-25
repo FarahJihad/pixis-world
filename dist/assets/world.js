@@ -214,8 +214,9 @@ function attachInteraction(scene, camera, renderer, scenery, pool, pixi, mazeAva
     const effects = !reduced.matches;
     const { screen, emotion } = chapters.state;
     if (screen === 'surprise') {
-      mazeView ??= createMazeView(mazeAvatar, () => chapters.maze.clickCharacter());
-      mazeView(chapters.maze, delta, effects);
+      const { maze } = chapters;
+      mazeView ??= createMazeView(mazeAvatar, maze.clickCharacter);
+      mazeView(maze.state, delta, effects);
       return;
     }
     framing = follow(framing, screen === 'welcome' ? 0 : 1, effects ? 5 : 24, delta);

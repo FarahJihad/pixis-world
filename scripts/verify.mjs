@@ -117,18 +117,30 @@ try {
   } else assert.equal(startup.oscillators, 0);
   const intro = page.locator('#intro');
   const name = page.locator('#pixi-name');
-  async function clickPixiAt([column, row]) {
-    const canvas = await page.locator('#maze-canvas canvas').boundingBox();
+  async function clickPixiAt([column, row], expectHit = true) {
+    const surface = page.locator('#maze-canvas canvas');
+    const canvas = await surface.boundingBox();
     assert.ok(canvas, 'The 3D maze canvas should be visible');
     const aspect = canvas.width / canvas.height;
     const viewHeight = Math.max(7.45, 13.15 / aspect);
     const viewWidth = viewHeight * aspect;
     const x = (column - 6) * .88;
     const z = (row - 3) * .88;
-    await page.mouse.click(
-      canvas.x + (0.5 + x / viewWidth) * canvas.width,
-      canvas.y + (0.5 + z / viewHeight) * canvas.height
-    );
+    const screenX = canvas.x + (0.5 + x / viewWidth) * canvas.width;
+    const screenY = canvas.y + (0.5 + z / viewHeight) * canvas.height;
+    if (expectHit) {
+      const deadline = Date.now() + 15000;
+      let cursor;
+      do {
+        await page.mouse.move(screenX + 1, screenY);
+        await page.mouse.move(screenX, screenY);
+        cursor = await surface.evaluate((canvas) => canvas.style.cursor);
+      } while (cursor !== 'pointer' && Date.now() < deadline);
+      assert.equal(cursor, 'pointer', 'The visible PIXI model should be under the pointer');
+      assert.equal(await surface.evaluate((canvas, [x, y]) => document.elementFromPoint(x, y) === canvas,
+        [screenX, screenY]), true, 'The maze canvas should receive the click');
+    }
+    await page.mouse.click(screenX, screenY);
   }
   assert.equal(await name.textContent(), 'PIXI');
   assert.equal(await page.locator('#welcome-title').getAttribute('aria-label'), 'مرحبًا بكم، أنا PIXI');
@@ -235,20 +247,15 @@ try {
   await page.waitForFunction(() => document.querySelector('#surprise').dataset.phase === 'waiting');
   assert.equal(await page.locator('#maze-instruction').textContent(), 'اضغطوا على بيكسي عشان تتحرك!');
   assert.equal(await gates.textContent(), '٠ / ٣');
-  await page.waitForTimeout(1050);
+  await page.waitForFunction(() => getComputedStyle(document.querySelector('.maze-shell')).opacity === '1');
   if (image) {
     await page.screenshot({ path: image.replace('.png', '-maze.png') });
   }
-  console.log('Maze render state', await page.evaluate(() => ({
-    phase: document.querySelector('#surprise').dataset.phase,
-    shellOpacity: getComputedStyle(document.querySelector('.maze-shell')).opacity,
-    emergencyOpacity: getComputedStyle(document.querySelector('#emergency-scene')).opacity,
-    characterCanvas: document.querySelector('#maze-canvas canvas').getBoundingClientRect().toJSON()
-  })));
   await clickPixiAt([0, 4]);
-  await page.waitForFunction(() => document.querySelector('#surprise').dataset.phase === 'walking', undefined, { timeout: 3000 });
+  await page.waitForFunction(() => document.querySelector('#surprise').dataset.phase === 'walking', undefined, { timeout: 3000 })
+    .catch((error) => { throw new Error(errors.join('\n') || error.message, { cause: error }); });
   await page.waitForTimeout(280);
-  await clickPixiAt([1, 4]);
+  await clickPixiAt([1, 4], false);
   assert.equal(await maze.getAttribute('data-phase'), 'walking');
   await questionModal.waitFor({ state: 'visible', timeout: 10000 });
   assert.match(await step.textContent(), /١.*الرياضيات/);
@@ -256,7 +263,7 @@ try {
   assert.equal(await maze.getAttribute('data-phase'), 'question');
   assert.equal(await gates.textContent(), '٠ / ٣');
   assert.equal(await answers.nth(0).getAttribute('data-wrong'), '');
-  assert.match(await page.locator('#maze-feedback').textContent(), /مرة تانية/);
+  assert.match(await page.locator('#maze-feedback').textContent(), /مرة ثانية/);
   await answers.nth(1).click();
   assert.equal(await answers.nth(1).getAttribute('data-correct'), '');
   assert.equal(await page.locator('#maze-feedback').textContent(), 'إجابة صحيحة!');
@@ -279,6 +286,7 @@ try {
   await page.waitForFunction(() => document.querySelector('#surprise').dataset.phase === 'walking');
   await page.waitForFunction(() => document.querySelector('#surprise').dataset.phase === 'escaped', undefined, { timeout: 10000 });
   assert.ok(await page.locator('#maze-victory').isVisible());
+  assert.equal(await page.locator('.victory-card').evaluate((card) => getComputedStyle(card).animationName), 'modal-arrive');
   assert.equal(await page.locator('.victory-kicker').textContent(), 'MISSION COMPLETE!');
   assert.equal(await page.locator('.victory-card h2').textContent(), 'مبروك يا مهندسات المستقبل!');
   assert.equal(await page.locator('.victory-dialogue').textContent(), 'يااااي! طلعت من المتاهة! شكرًا يا أحلى مهندسات برمجيات!');
@@ -310,7 +318,6 @@ try {
   assert.equal(await maze.getAttribute('data-phase'), 'intro');
   await page.locator('#maze-begin').click();
   await page.waitForFunction(() => document.querySelector('#surprise').dataset.phase === 'waiting');
-  await page.waitForTimeout(250);
   await clickPixiAt([0, 4]);
   await questionModal.waitFor({ state: 'visible', timeout: 10000 });
   assert.equal(await maze.getAttribute('data-phase'), 'question');
