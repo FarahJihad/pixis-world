@@ -16,11 +16,13 @@ function createApp(section, sound) {
   const phone = section.querySelector('.design-phone');
   const title = phone.querySelector('.design-app-title');
   const list = phone.querySelector('.design-app-threads ul');
-  const draft = phone.querySelector('.design-app-compose span');
+  const draft = phone.querySelector('.design-app-draft');
   const send = phone.querySelector('.design-send');
   const feedback = phone.querySelector('.design-app-feedback');
 
   phone.querySelector('.design-app-subtitle').textContent = app.subtitle;
+  draft.querySelector('span').textContent = app.draft;
+  draft.querySelector('svg').setAttribute('aria-label', app.attachment);
   phone.querySelector('.design-app-alert').textContent = app.alert;
   phone.querySelector('.design-app-tools').append(...labels(app.tools));
   phone.querySelector('.design-app-nav').append(...labels(app.nav));
@@ -46,7 +48,7 @@ function createApp(section, sound) {
   send.textContent = app.send;
   send.addEventListener('click', () => {
     if (send.getAttribute('aria-disabled') === 'true') return;
-    draft.textContent = '';
+    draft.hidden = true;
     feedback.textContent = app.sent;
     send.setAttribute('aria-disabled', 'true');
     phone.dataset.sent = '';
@@ -61,7 +63,7 @@ function createApp(section, sound) {
       send.disabled = applied < rules.length;
     },
     resetMessage() {
-      draft.textContent = app.draft;
+      draft.hidden = false;
       feedback.textContent = '';
       send.removeAttribute('aria-disabled');
       delete phone.dataset.sent;
@@ -73,6 +75,7 @@ export function createDesignChapter(section, sound, goHome) {
   const heading = section.querySelector('.design-heading');
   const line = section.querySelector('.design-line');
   const next = section.querySelector('.design-next');
+  const gift = section.querySelector('.design-gift');
   const replay = section.querySelector('.design-replay');
   const comparison = section.querySelector('.design-compare');
   const progress = section.querySelector('.design-progress');
@@ -87,12 +90,14 @@ export function createDesignChapter(section, sound, goHome) {
   });
   comparison.querySelectorAll('dd').forEach((item, index) => { item.textContent = compare[index]; });
   replay.textContent = controls.replay;
+  gift.setAttribute('aria-label', controls.openGift);
 
-  let scene, rule, applied;
+  let scene, rule, applied, opening;
 
   function render(focus = false) {
     const isRule = scene === 'rule';
     const isDone = scene === 'done';
+    const isGift = scene === 'gift';
     const ruleApplied = isRule && applied > rule;
     const copy = isRule ? rules[rule] : story[scene];
     section.dataset.scene = scene;
@@ -111,8 +116,12 @@ export function createDesignChapter(section, sound, goHome) {
     });
     change.hidden = !ruleApplied;
     change.textContent = ruleApplied ? copy.change : '';
+    gift.disabled = !isGift;
+    gift.toggleAttribute('inert', !isGift);
+    next.parentElement.hidden = isGift;
     replay.hidden = !isDone;
-    if (isDone) next.textContent = controls.back;
+    if (isGift) next.textContent = '';
+    else if (isDone) next.textContent = controls.back;
     else if (!isRule) next.textContent = copy.next;
     else if (!ruleApplied) next.textContent = controls.apply;
     else next.textContent = applied === rules.length ? controls.reveal : controls.next;
@@ -123,10 +132,33 @@ export function createDesignChapter(section, sound, goHome) {
   function enter(audible) {
     scene = 'gift';
     rule = applied = 0;
+    opening = undefined;
+    delete section.dataset.openingGift;
+    gift.removeAttribute('aria-disabled');
     phone.resetMessage();
     render();
     if (audible) sound.play('next');
   }
+
+  gift.addEventListener('click', async () => {
+    if (scene !== 'gift' || section.hasAttribute('data-opening-gift')) return;
+    const attempt = {};
+    opening = attempt;
+    gift.setAttribute('aria-disabled', 'true');
+    section.dataset.openingGift = '';
+    sound.play('nav');
+    const shake = gift.getAnimations().find((animation) => animation.animationName === 'parcel-shake');
+    if (shake) await shake.finished.catch(() => {});
+    if (section.hidden || opening !== attempt) return;
+
+    const focusGift = document.activeElement === gift;
+    opening = undefined;
+    delete section.dataset.openingGift;
+    gift.removeAttribute('aria-disabled');
+    scene = 'mug';
+    sound.play('gift');
+    render(focusGift);
+  });
 
   next.addEventListener('click', () => {
     if (scene === 'done') return goHome();
@@ -143,7 +175,7 @@ export function createDesignChapter(section, sound, goHome) {
         phone.resetMessage();
       } else rule += 1;
     } else scene = sequence[sequence.indexOf(scene) + 1];
-    const cue = { mug: 'gift', sip: 'shy', clutter: 'concerned', teacher: 'next', done: 'gift' };
+    const cue = { sip: 'shy', clutter: 'concerned', teacher: 'next', done: 'gift' };
     sound.play(cue[scene] ?? 'nav');
     render(true);
   });

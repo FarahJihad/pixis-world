@@ -128,12 +128,23 @@
   top: var(--gift-y, 67%);
   width: min(19vw, 26vh, 224px);
   aspect-ratio: 1.13;
+  padding: 0;
+  border: 0;
+  border-radius: 14%;
+  background: none;
   transform: translate(-50%, -50%) rotate(-6deg);
   filter: drop-shadow(0 12px 9px #77537947);
   opacity: var(--parcel-opacity);
   transition: opacity .32s;
 }
-.design[data-scene="gift"] .design-gift { animation: parcel-arrival .76s cubic-bezier(.19,.71,.45,1.22) both; }
+.design[data-scene="gift"] .design-gift {
+  cursor: pointer;
+  animation: parcel-arrival .76s cubic-bezier(.19,.71,.45,1.22) backwards;
+}
+.design[data-scene="gift"]:not([data-opening-gift]) .design-gift:is(:hover, :focus-visible) .design-gift-lid {
+  transform: translateY(-8%) rotate(-4deg);
+}
+.design[data-opening-gift] .design-gift { animation: parcel-shake .57s ease-in-out both; cursor: default; }
 .design:not([data-scene="gift"], [data-scene="mug"]) .design-gift { --parcel-opacity: 0; }
 .design-gift-base,
 .design-gift-lid { position: absolute; border: 1px solid #a26bad; }
@@ -178,7 +189,7 @@
   opacity: 1;
   transform: translate(-50%, -50%) rotate(var(--sip-angle, 7deg)) scale(var(--sip-scale, 1));
 }
-.design[data-scene="mug"] .design-mug { animation: mug-reveal .65s cubic-bezier(.2,.8,.3,1.14) both; }
+.design[data-scene="mug"] .design-mug { animation: mug-reveal .6s .13s cubic-bezier(.2,.8,.3,1.14) both; }
 .design-sparkles {
   position: absolute;
   z-index: 4;
@@ -313,6 +324,15 @@
   background: #fffaf2;
   font-size: 5.3cqw;
 }
+.design-app-draft { display: flex; align-items: center; gap: 2cqw; }
+.design-app-draft svg {
+  width: 12cqw;
+  aspect-ratio: 1;
+  flex: none;
+  padding: 1cqw;
+  border-radius: 23%;
+  background: #fbe5ef;
+}
 .design-send {
   min-height: 7cqw;
   margin-inline-start: auto;
@@ -397,6 +417,14 @@
 @keyframes parcel-arrival {
   from { opacity: 0; transform: translate(-50%, -155%) rotate(14deg) scale(.82); }
   69% { transform: translate(-50%, -42%) rotate(-10deg) scale(1.04,.9); }
+}
+@keyframes parcel-shake {
+  0%, 100% { transform: translate(-50%, -50%) rotate(-6deg); }
+  16% { transform: translate(-50%, -46%) rotate(-12deg) scale(1.045,.94); }
+  31% { transform: translate(-55%, -54%) rotate(-16deg); }
+  48% { transform: translate(-43%, -56%) rotate(9deg); }
+  66% { transform: translate(-55%, -56%) rotate(-15deg); }
+  82% { transform: translate(-47%, -53%) rotate(4deg); }
 }
 @keyframes mug-reveal {
   from { opacity: 0; transform: translate(-12%, 30%) rotate(24deg) scale(.25); }

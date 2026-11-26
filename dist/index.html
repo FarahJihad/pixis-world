@@ -230,25 +230,27 @@
       </div>
       <div class="design-visual">
         <div class="design-avatar" aria-hidden="true"><img src="./assets/pixi-icon.svg" alt=""></div>
-        <div class="design-gift" aria-hidden="true">
-          <div class="design-gift-base"></div>
-          <div class="design-gift-lid"></div>
-        </div>
+        <button class="design-gift" type="button">
+          <span class="design-gift-base" aria-hidden="true"></span>
+          <span class="design-gift-lid" aria-hidden="true"></span>
+        </button>
         <svg class="design-mug" viewBox="0 0 180 165" aria-hidden="true">
           <defs>
             <linearGradient id="mug-glaze" x2=".85" y2="1">
               <stop stop-color="#ffdfef"/><stop offset=".58" stop-color="#f2a9cc"/><stop offset="1" stop-color="#d576a4"/>
             </linearGradient>
           </defs>
-          <path d="M129 53c47-24 55 42 11 49" fill="none" stroke="#e491b4" stroke-width="15" stroke-linecap="round"/>
-          <path d="M129 51c47-24 55 42 11 49" fill="none" stroke="#fac2db" stroke-width="8" stroke-linecap="round"/>
-          <ellipse cx="82" cy="62" rx="63" ry="24" fill="#e797b8"/>
-          <ellipse cx="82" cy="62" rx="52" ry="17" fill="#945575"/>
-          <path d="M19 62L29 15q3-13 14-4l22 27q20-3 35 0l24-27q11-9 14 4l10 47-10 54q-6 29-54 29t-55-28Z" fill="url(#mug-glaze)"/>
-          <path d="m30 43 7-24 18 22m53 0 20-23 6 26" fill="#ee9fc2"/>
-          <path d="M60 85h1m47 0h1" stroke="#654059" stroke-width="8" stroke-linecap="round"/>
-          <path d="M79 89q5 8 10 0" fill="none" stroke="#654059" stroke-width="3" stroke-linecap="round"/>
-          <ellipse cx="46" cy="99" rx="10" ry="5" fill="#ed87b2"/><ellipse cx="121" cy="99" rx="10" ry="5" fill="#ed87b2"/>
+          <g id="design-mug-art">
+            <path d="M129 53c47-24 55 42 11 49" fill="none" stroke="#e491b4" stroke-width="15" stroke-linecap="round"/>
+            <path d="M129 51c47-24 55 42 11 49" fill="none" stroke="#fac2db" stroke-width="8" stroke-linecap="round"/>
+            <ellipse cx="82" cy="62" rx="63" ry="24" fill="#e797b8"/>
+            <ellipse cx="82" cy="62" rx="52" ry="17" fill="#945575"/>
+            <path d="M19 62L29 15q3-13 14-4l22 27q20-3 35 0l24-27q11-9 14 4l10 47-10 54q-6 29-54 29t-55-28Z" fill="url(#mug-glaze)"/>
+            <path d="m30 43 7-24 18 22m53 0 20-23 6 26" fill="#ee9fc2"/>
+            <path d="M60 85h1m47 0h1" stroke="#654059" stroke-width="8" stroke-linecap="round"/>
+            <path d="M79 89q5 8 10 0" fill="none" stroke="#654059" stroke-width="3" stroke-linecap="round"/>
+            <ellipse cx="46" cy="99" rx="10" ry="5" fill="#ed87b2"/><ellipse cx="121" cy="99" rx="10" ry="5" fill="#ed87b2"/>
+          </g>
         </svg>
         <div class="design-sparkles" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i><i></i></div>
         <div class="design-phone" dir="rtl">
@@ -265,7 +267,10 @@
               <ul></ul>
             </section>
             <footer class="design-app-compose">
-              <span></span>
+              <div class="design-app-draft">
+                <svg viewBox="0 0 180 165" role="img"><use href="#design-mug-art"/></svg>
+                <span></span>
+              </div>
               <button class="design-send" type="button" disabled></button>
             </footer>
             <p class="design-app-feedback" role="status"></p>

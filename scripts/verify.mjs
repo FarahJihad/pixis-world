@@ -731,16 +731,31 @@ try {
   await design.locator('canvas').waitFor();
   assert.equal(new URL(page.url()).hash, '#design');
   assert.equal(await navigation.getByRole('link', { name: 'التصميم' }).getAttribute('aria-current'), 'page');
-  for (const scene of ['gift', 'mug', 'sip', 'compare', 'phone', 'clutter', 'teacher']) {
+  assert.equal(await design.getAttribute('data-scene'), 'gift');
+  assert.equal(await lessonNext.isVisible(), false);
+  const gift = design.getByRole('button', { name: 'افتحي هدية بيكسي' });
+  await page.emulateMedia({ reducedMotion: 'no-preference' });
+  await gift.evaluate((box) => box.addEventListener('click', () => {
+    box.dataset.wasShaking = String(box.closest('#design').hasAttribute('data-opening-gift'));
+  }, { once: true }));
+  await gift.press('Enter');
+  await page.waitForFunction(() => document.querySelector('#design').dataset.scene === 'mug');
+  assert.equal(await design.locator('.design-gift').getAttribute('data-was-shaking'), 'true');
+  await page.emulateMedia({ reducedMotion: 'reduce' });
+  for (const scene of ['mug', 'sip', 'compare', 'phone', 'clutter', 'teacher']) {
     assert.equal(await design.getAttribute('data-scene'), scene);
     if (scene === 'sip') {
       assert.equal(await design.locator('.design-mug').evaluate((mug) => getComputedStyle(mug).animationName), 'none');
     }
-    if (scene === 'phone') assert.equal(await phone.evaluate((element) => element.inert), true);
+    if (scene === 'phone') {
+      assert.equal(await phone.evaluate((element) => element.inert), true);
+      assert.match(await design.locator('.design-line').textContent(), /صورة الكوب/);
+    }
     if (scene === 'clutter') {
       assert.equal(await design.getAttribute('data-zoomed'), '');
       assert.equal(await phone.evaluate((element) => element.inert), false);
       assert.equal(await phone.locator('.design-app-tools span:visible').count(), 8);
+      assert.equal(await phone.getByRole('img', { name: 'صورة الكوب' }).count(), 1);
     }
     await lessonNext.click();
   }
@@ -770,6 +785,8 @@ try {
   await design.getByRole('button', { name: 'إعادة الدرس' }).click();
   assert.equal(await design.getAttribute('data-scene'), 'gift');
   assert.equal(await design.getAttribute('data-applied'), '0');
+  await gift.click();
+  assert.equal(await design.getAttribute('data-scene'), 'mug');
   await page.goBack();
   await home.locator('canvas').waitFor();
   await surpriseLink.click();
