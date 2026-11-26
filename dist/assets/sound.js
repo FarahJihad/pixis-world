@@ -26,6 +26,8 @@ const hz = (note) => 440 * 2 ** ((note - 69) / 12);
 export function createSound() {
   let context, bus;
   let alarmMeter, alarmSamples, alarmActive = false;
+  let footstepsLoad, footstepsBuffer, footstepsSource, footstepsGain;
+  let footstepsActive = false;
   const alarm = new Audio(typeof PIXI_OFFLINE_ALARM !== 'undefined'
     ? PIXI_OFFLINE_ALARM
     : new URL('./assets/emergency-alarm-69780.mp3', document.baseURI).href);
@@ -132,6 +134,54 @@ export function createSound() {
     alarm.currentTime = 0;
   }
 
+  function prepareMazeFootsteps() {
+    if (footstepsLoad || !prepareAutomatic()) return;
+    const url = typeof PIXI_OFFLINE_FOOTSTEPS !== 'undefined'
+      ? PIXI_OFFLINE_FOOTSTEPS
+      : new URL('./assets/cartoon-fast-footsteps-mgwav-76186.mp3', document.baseURI).href;
+    footstepsLoad = fetch(url)
+      .then((response) => {
+        if (!response.ok) throw new Error('Could not load PIXI’s footsteps');
+        return response.arrayBuffer();
+      })
+      .then((bytes) => context.decodeAudioData(bytes))
+      .then((buffer) => {
+        footstepsBuffer = buffer;
+        playMazeFootsteps();
+      })
+      .catch(() => { footstepsLoad = undefined; });
+  }
+
+  function playMazeFootsteps() {
+    if (!footstepsActive || footstepsSource || !unlock()) return;
+    if (!footstepsBuffer) {
+      prepareMazeFootsteps();
+      return;
+    }
+    if (!footstepsGain) {
+      footstepsGain = context.createGain();
+      footstepsGain.gain.value = .24;
+      footstepsGain.connect(bus);
+    }
+    const source = context.createBufferSource();
+    source.buffer = footstepsBuffer;
+    source.loop = true;
+    // Loop the continuous run between quiet points in the supplied recording.
+    source.loopStart = 1.17;
+    source.loopEnd = 2.11;
+    source.connect(footstepsGain);
+    source.start(context.currentTime, source.loopStart);
+    footstepsSource = source;
+  }
+
+  function stopMazeFootsteps() {
+    footstepsActive = false;
+    if (!footstepsSource) return;
+    footstepsSource.stop();
+    footstepsSource.disconnect();
+    footstepsSource = undefined;
+  }
+
   return {
     get enabled() { return enabled; },
     prepareAutomatic,
@@ -144,6 +194,12 @@ export function createSound() {
     },
     playEmergencyAlarm,
     stopEmergencyAlarm,
+    prepareMazeFootsteps,
+    startMazeFootsteps() {
+      footstepsActive = true;
+      playMazeFootsteps();
+    },
+    stopMazeFootsteps,
     emergencyLevel() {
       if (!alarmMeter || alarm.paused || !enabled || context.state !== 'running') return 0;
       alarmMeter.getFloatTimeDomainData(alarmSamples);
@@ -175,6 +231,7 @@ export function createSound() {
     },
     toggle(chime = true) {
       setEnabled(!enabled);
+      if (enabled) playMazeFootsteps();
       if (alarmActive) playEmergencyAlarm();
       else if (enabled && unlock() && chime) bell(context.currentTime + .016, 76, .09);
     }

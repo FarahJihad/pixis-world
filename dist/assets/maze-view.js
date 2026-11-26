@@ -75,7 +75,7 @@ function tiles(scene) {
   scene.add(highlight);
 }
 
-function sign(scene, camera, label, fill, dimensions, position) {
+function sign(scene, camera, label, fill, dimensions, position, drawMark) {
   const canvas = document.createElement('canvas');
   canvas.width = 256;
   canvas.height = 128;
@@ -88,10 +88,14 @@ function sign(scene, camera, label, fill, dimensions, position) {
   ctx.lineWidth = 9;
   ctx.stroke();
   ctx.fillStyle = '#493453';
-  ctx.font = 'bold ' + (label.length === 1 ? 88 : 53) + 'px "Segoe UI", Tahoma, sans-serif';
-  ctx.textAlign = 'center';
-  ctx.textBaseline = 'middle';
-  ctx.fillText(label, 128, 67, 224);
+  if (drawMark) {
+    drawMark(ctx);
+  } else {
+    ctx.font = 'bold ' + (label.length === 1 ? 88 : 53) + 'px "Segoe UI", Tahoma, sans-serif';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillText(label, 128, 67, 224);
+  }
   const texture = new T.CanvasTexture(canvas);
   texture.colorSpace = T.SRGBColorSpace;
   const mat = new T.MeshBasicMaterial({ map: texture, transparent: true, depthWrite: false, toneMapped: false });
@@ -103,6 +107,22 @@ function sign(scene, camera, label, fill, dimensions, position) {
   return badge;
 }
 
+function drawPadlock(ctx) {
+  ctx.strokeStyle = '#493453';
+  ctx.lineWidth = 12;
+  ctx.beginPath();
+  ctx.roundRect(88, 20, 80, 55, 25);
+  ctx.stroke();
+  ctx.beginPath();
+  ctx.roundRect(62, 50, 132, 59, 14);
+  ctx.fill();
+  ctx.fillStyle = '#fff5ed';
+  ctx.beginPath();
+  ctx.arc(128, 74, 8, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.fillRect(124, 75, 8, 17);
+}
+
 function createGate(scene, camera, item, index) {
   const group = new T.Group();
   const [x, z] = trail[item.at];
@@ -111,17 +131,36 @@ function createGate(scene, camera, item, index) {
   group.rotation.y = nextX === x ? Math.PI / 2 : 0;
   scene.add(group);
   const pastel = stone(item.color, .45);
-  const frame = stone(0x8b5f9f);
-  for (const z of [-.35, .35]) box(group, [.19, .69, .15], frame, [0, .35, z]);
-  box(group, [.20, .15, .85], pastel, [0, .72, 0]);
-  const door = new T.Group();
-  group.add(door);
-  for (const z of [-.22, 0, .22]) box(door, [.115, .57, .15], pastel, [0, .29, z]);
-  box(door, [.13, .11, .62], frame, [0, .31, 0]);
-  const badge = sign(scene, camera, '١٢٣'[index], '#' + item.color.toString(16).padStart(6, '0'),
-    [.61, .46], [group.position.x, .99, group.position.z - .13]);
+  const frame = stone(0x694c80);
+  const trim = stone(0xffeedc);
+  const posts = new T.CylinderGeometry(.135, .16, .65, 16);
+  const caps = new T.CylinderGeometry(.154, .136, .08, 16);
+  const leaves = [-1, 1].map((side) => {
+    const z = side * .40;
+    box(group, [.32, .09, .27], frame, [0, .045, z]);
+    const post = new T.Mesh(posts, frame);
+    post.position.set(0, .33, z);
+    group.add(post);
+    const cap = new T.Mesh(caps, pastel);
+    cap.position.set(0, .68, z);
+    group.add(cap);
 
-  return { door, badge, raised: 0 };
+    const leaf = new T.Group();
+    leaf.position.z = side * .20;
+    group.add(leaf);
+    box(leaf, [.42, .45, .40], frame, [0, .25, 0]);
+    box(leaf, [.32, .07, .36], pastel, [0, .49, 0]);
+    box(leaf, [.25, .025, .045], trim, [0, .531, side * .13]);
+    return { leaf, side };
+  });
+  const fill = '#' + item.color.toString(16).padStart(6, '0');
+  const { x: gateX, z: gateZ } = group.position;
+  const numberPosition = new T.Vector3(0, .787, -.40).applyAxisAngle(T.Object3D.DEFAULT_UP, group.rotation.y);
+  numberPosition.add(group.position);
+  sign(scene, camera, '١٢٣'[index], fill, [.36, .30], numberPosition.toArray());
+  const lock = sign(scene, camera, '', fill, [.52, .39], [gateX, .62, gateZ], drawPadlock);
+
+  return { leaves, lock, opened: 0 };
 }
 
 function makeConfetti(scene) {
@@ -360,10 +399,15 @@ export function createMazeView(model, onCharacterClick) {
     camera.lookAt(cameraTarget);
     for (const [i, gate] of doors.entries()) {
       const unlocked = i < state.gate || (i === state.gate && state.phase === 'opening');
-      gate.raised = effects ? T.MathUtils.lerp(gate.raised, unlocked ? 1 : 0, 1 - Math.exp(-delta * 8)) : Number(unlocked);
-      gate.door.position.y = gate.raised * .76;
-      gate.door.visible = gate.raised < .95;
-      gate.badge.material.opacity = 1 - gate.raised * .48;
+      gate.opened = effects ? T.MathUtils.lerp(gate.opened, Number(unlocked), 1 - Math.exp(-delta * 8)) : Number(unlocked);
+      const closed = 1 - gate.opened;
+      for (const { leaf, side } of gate.leaves) {
+        leaf.position.z = side * T.MathUtils.lerp(.20, .40, gate.opened);
+        leaf.scale.z = Math.max(.01, closed);
+        leaf.visible = closed > .05;
+      }
+      gate.lock.scale.setScalar(Math.max(.01, closed));
+      gate.lock.visible = closed > .05;
     }
     exit.material.opacity = state.phase === 'escaped' ? 1 : .68;
 

@@ -12,21 +12,21 @@ export const branches = [
 export const gates = [
   {
     at: 6, color: 0xe5a3c2, topic: 'الرياضيات',
-    question: 'مع بيكسي ٣ مفاتيح، ولقت مفتاحين كمان. كم مفتاح صار معها؟',
-    choices: ['٤ مفاتيح', '٥ مفاتيح', '٦ مفاتيح'],
-    correct: 1, hint: 'ابدؤوا من ٣ وعدّوا مفتاحين زيادة.'
+    question: 'إذا كان عند بيكسي ٣ صناديق، وفي كل صندوق ٨ نجوم، كم نجمة عندها؟',
+    choices: ['١٨', '٢٤', '٢١', '٣٢'],
+    correct: 1, hint: 'اضربوا عدد الصناديق في عدد النجوم الموجودة في كل صندوق.'
   },
   {
     at: 11, color: 0xb3d7c6, topic: 'العلوم',
-    question: 'أي جزء من النبات يمتصّ الماء من التربة؟',
-    choices: ['الأوراق', 'الساق', 'الجذور'],
-    correct: 2, hint: 'فكّروا بالجزء اللي ينمو تحت التربة.'
+    question: 'أي من هذه المواد يعتبر موصلًا جيدًا للكهرباء؟',
+    choices: ['الخشب', 'البلاستيك', 'الزجاج', 'النحاس'],
+    correct: 3, hint: 'فكروا في المادة المستخدمة داخل الأسلاك الكهربائية.'
   },
   {
     at: 16, color: 0xf4d88e, topic: 'هندسة البرمجيات',
-    question: 'إذا قالت بيكسي «بدي أشوف الأفكار اللي خلّصتها»، شو المتطلّب؟',
-    choices: ['إظهار الأفكار المكتملة', 'تغيير لون الدفتر', 'حذف الأفكار القديمة'],
-    correct: 0, hint: 'المتطلّب يصف الشي اللي بدها تشوفه في الدفتر.'
+    question: 'إذا اكتشفنا خطأ في الموقع بعد البرمجة، وش المفروض نسوي؟',
+    choices: ['نصلح الخطأ ونعيد الاختبار', 'نحذف الموقع كله', 'نتجاهل الخطأ', 'نغير الألوان بس'],
+    correct: 0, hint: 'تذكروا كيف صلحنا المشكلة في موقع بيكسي وجربناه مرة ثانية.'
   }
 ];
 
@@ -81,7 +81,7 @@ export function createMazeGame(sound) {
       step.textContent = 'البوابة ' + digits[state.gate + 1] + ' · ' + question.topic;
       prompt.textContent = question.question;
       for (const [index, button] of choices.entries()) {
-        button.querySelector('span').textContent = question.choices[index];
+        button.querySelector('.maze-choice-text').textContent = question.choices[index];
       }
       prompt.focus({ preventScroll: true });
     } else if (state.phase === 'escaped') {
@@ -117,6 +117,7 @@ export function createMazeGame(sound) {
   function clickCharacter() {
     if (!active || state.phase !== 'waiting') return;
     state.phase = 'walking';
+    if (!reduced.matches) sound.startMazeFootsteps();
     refresh();
   }
 
@@ -137,6 +138,7 @@ export function createMazeGame(sound) {
       const stop = gates[state.gate]?.at ?? last;
       state.position = reduced.matches ? stop : Math.min(stop, state.position + delta * 2.75);
       if (state.position === stop) {
+        sound.stopMazeFootsteps();
         if (stop === last) {
           state.phase = 'escaped';
           state.escapedAt = state.clocks;
@@ -162,6 +164,7 @@ export function createMazeGame(sound) {
 
   function reset() {
     sound.stopEmergencyAlarm();
+    sound.stopMazeFootsteps();
     Object.assign(state, {
       phase: 'intro', position: 0, gate: 0, clocks: 0, escapedAt: 0,
       opened: [], sceneBlend: 0, alarmGlow: 0
@@ -185,8 +188,8 @@ export function createMazeGame(sound) {
   document.addEventListener('keydown', (event) => {
     if (active && state.phase === 'intro' && !begin.contains(event.target)) sound.playEmergencyAlarm();
     if (!active || state.phase !== 'question' || event.altKey || event.ctrlKey || event.metaKey || event.repeat) return;
-    const key = '123'.indexOf(event.key);
-    const index = key >= 0 ? key : '١٢٣'.indexOf(event.key);
+    const key = '1234'.indexOf(event.key);
+    const index = key >= 0 ? key : '١٢٣٤'.indexOf(event.key);
     if (index < 0) return;
     event.preventDefault();
     answer(index);
@@ -199,6 +202,7 @@ export function createMazeGame(sound) {
       if (active) return;
       active = true;
       reset();
+      sound.prepareMazeFootsteps();
       previous = performance.now();
       frame = requestAnimationFrame(tick);
     },

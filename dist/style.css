@@ -436,9 +436,8 @@ button:focus-visible { outline: 2px solid var(--focus); outline-offset: 4px; }
   animation: modal-arrive .42s cubic-bezier(.18,.76,.22,1) both;
 }
 .maze-step { margin: 0 0 12px; color: #795890; font-size: clamp(.88rem, 1.4vw, 1.08rem); font-weight: 760; }
-#maze-modal-title { margin: 0 0 8px; color: #4a355d; font-size: clamp(1.3rem, 2.3vw, 1.9rem); }
 #maze-prompt { margin: 0; color: #342541; font-size: clamp(1.2rem, 2vw, 1.75rem); line-height: 1.65; font-weight: 730; }
-.maze-options { display: grid; gap: 11px; margin-top: 22px; }
+.maze-options { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); grid-auto-rows: 1fr; gap: 11px; margin-top: 22px; }
 .maze-options button {
   display: flex;
   align-items: center;
@@ -456,8 +455,9 @@ button:focus-visible { outline: 2px solid var(--focus); outline-offset: 4px; }
   transition: background .2s, border-color .2s, color .2s, transform .2s;
 }
 .maze-options button:hover { transform: translateY(-1px); background: #eddef5; }
-.maze-options kbd {
+.maze-choice-label {
   display: grid;
+  flex-shrink: 0;
   place-items: center;
   min-width: 2em;
   height: 2em;
@@ -619,7 +619,7 @@ button:focus-visible { outline: 2px solid var(--focus); outline-offset: 4px; }
   .maze-modal-backdrop, .maze-victory { padding: 13px; }
   .maze-modal { padding: 21px 17px; border-radius: 20px; }
   .maze-options { gap: 8px; margin-top: 15px; }
-  .maze-options button { min-height: 54px; padding: 8px 10px; border-radius: 13px; }
+  .maze-options button { gap: 6px; min-height: 54px; padding: 8px 10px; border-radius: 13px; }
   .maze-feedback { margin-top: 11px; font-size: .9rem; }
   .victory-card { padding: 27px 19px; border-radius: 22px; }
   .victory-kicker { font-size: 1.05rem; }

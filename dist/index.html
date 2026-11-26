@@ -140,12 +140,12 @@
       <div class="maze-modal-backdrop" id="maze-question-backdrop" hidden>
         <section class="maze-modal" role="dialog" aria-modal="true" aria-labelledby="maze-step" aria-describedby="maze-prompt">
           <p class="maze-step" id="maze-step"></p>
-          <h2 id="maze-modal-title">فكّروا مع بيكسي</h2>
           <p id="maze-prompt" tabindex="-1"></p>
-          <div class="maze-options" id="maze-options" role="group" aria-labelledby="maze-modal-title">
-            <button type="button" data-maze-choice="0"><kbd aria-hidden="true">١</kbd><span></span></button>
-            <button type="button" data-maze-choice="1"><kbd aria-hidden="true">٢</kbd><span></span></button>
-            <button type="button" data-maze-choice="2"><kbd aria-hidden="true">٣</kbd><span></span></button>
+          <div class="maze-options" id="maze-options" role="group" aria-labelledby="maze-prompt">
+            <button type="button" data-maze-choice="0" aria-keyshortcuts="1 ١"><span class="maze-choice-label" dir="ltr">A</span><span class="maze-choice-text"></span></button>
+            <button type="button" data-maze-choice="1" aria-keyshortcuts="2 ٢"><span class="maze-choice-label" dir="ltr">B</span><span class="maze-choice-text"></span></button>
+            <button type="button" data-maze-choice="2" aria-keyshortcuts="3 ٣"><span class="maze-choice-label" dir="ltr">C</span><span class="maze-choice-text"></span></button>
+            <button type="button" data-maze-choice="3" aria-keyshortcuts="4 ٤"><span class="maze-choice-label" dir="ltr">D</span><span class="maze-choice-text"></span></button>
           </div>
           <p class="maze-feedback" id="maze-feedback" role="status" hidden></p>
         </section>
