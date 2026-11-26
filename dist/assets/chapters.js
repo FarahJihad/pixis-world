@@ -2,15 +2,18 @@ import { createSound } from './sound.js';
 import { createDialogue } from './dialogue.js';
 import { createRequests } from './requirements.js';
 import { createMazeGame } from './maze.js';
+import { createHomeChapter } from './home.js';
 
-const routes = { welcome: '', emotions: '#emotions', surprise: '#surprise' };
+const routes = { welcome: '', emotions: '#emotions', home: '#home', surprise: '#surprise' };
 
 export function createChapters(world, status) {
   const sound = createSound();
   const maze = createMazeGame(sound);
+  const home = createHomeChapter();
   const dialogue = createDialogue(sound);
   const panel = {
     emotions: document.querySelector('#emotions'),
+    home: document.querySelector('#home'),
     surprise: document.querySelector('#surprise')
   };
   const soundButton = document.querySelector('#sound');
@@ -52,7 +55,10 @@ export function createChapters(world, status) {
     state.screen = screen;
     world.dataset.screen = screen;
     panel.emotions.hidden = screen !== 'emotions';
+    panel.home.hidden = screen !== 'home';
     panel.surprise.hidden = screen !== 'surprise';
+    if (screen === 'home') home.enter();
+    else home.leave();
     for (const link of destinations) {
       if (link.dataset.destination === screen) link.setAttribute('aria-current', 'page');
       else link.removeAttribute('aria-current');
@@ -121,6 +127,7 @@ export function createChapters(world, status) {
     state,
     sound,
     maze,
+    home,
     ready() {
       ready = true;
       syncSound();

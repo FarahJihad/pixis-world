@@ -509,9 +509,45 @@ try {
   await page.locator('#loading').waitFor({ state: 'hidden' });
   assert.equal(await sound.getAttribute('aria-pressed'), 'false');
   assert.equal(await page.evaluate(() => window.pixiOscillators), 0);
+
+  const navigation = page.locator('.world-nav');
+  assert.deepEqual(await navigation.locator('a').allTextContents(), ['البداية', 'المتطلبات', 'البيت', 'السر']);
+  const homeLink = navigation.getByRole('link', { name: 'البيت' });
+  const home = page.locator('#home');
+  await homeLink.click();
+  await home.locator('canvas').waitFor();
+  assert.equal(new URL(page.url()).hash, '#home');
+  assert.equal(await homeLink.getAttribute('aria-current'), 'page');
+  const viewport = page.viewportSize();
+  assert.deepEqual(await home.locator('canvas').boundingBox(), { x: 0, y: 0, ...viewport });
+  const controls = await home.locator('.home-actions').boundingBox();
+  assert.ok(controls.y > viewport.height / 2 && controls.y + controls.height <= viewport.height);
+  if (image) await page.screenshot({ path: image.replace('.png', '-home-mobile.png') });
+  async function homeAction(label, action) {
+    const button = home.getByRole('button', { name: label });
+    await button.click();
+    assert.equal(await home.getAttribute('data-home-action'), action);
+    assert.equal(await button.getAttribute('aria-pressed'), 'true');
+    assert.equal(await home.locator('button[aria-pressed="true"]').count(), 1);
+  }
+  function homeIdle() {
+    return page.waitForFunction(() => document.querySelector('#home').dataset.homeAction === 'idle');
+  }
+  await homeAction('الرقص', 'dance');
+  await homeIdle();
+  await homeAction('النوم', 'sleep');
+  await homeAction('القفز', 'jump');
+  await homeIdle();
+  await homeAction('النوم', 'sleep');
+  await requestLink.click();
+  await page.locator('#stage canvas').waitFor();
+  await homeLink.click();
+  await home.locator('canvas').waitFor();
+  assert.equal(await home.getAttribute('data-home-action'), 'idle');
+  assert.equal(await home.locator('button[aria-pressed="true"]').count(), 0);
   assert.deepEqual(errors, []);
   console.log('Chrome verified automatic entry, sound state with autoplay ' + (autoplay ? 'allowed' : 'blocked') +
-    ', effects-only audio, requirements, emergency intro, click-to-move gate flow, retries, keyboard answers, victory, restart, and re-entry.');
+    ', effects-only audio, requirements, emergency intro, click-to-move gate flow, retries, keyboard answers, victory, and home actions and re-entry.');
 } finally {
   await browser.close();
 }

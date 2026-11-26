@@ -24,6 +24,18 @@
     <symbol id="icon-home" viewBox="0 0 24 24">
       <path d="M3.5 10.5 12 4l8.5 6.5v8.2c0 .7-.6 1.3-1.3 1.3h-4.4v-5.4a1 1 0 0 0-1-1h-3.6a1 1 0 0 0-1 1V20H4.8c-.7 0-1.3-.6-1.3-1.3Z"/>
     </symbol>
+    <symbol id="icon-welcome" viewBox="0 0 24 24">
+      <path d="M12 3v18M3 12h18M6 6l12 12M18 6 6 18"/>
+    </symbol>
+    <symbol id="icon-music" viewBox="0 0 24 24">
+      <path d="M9 17V6l11-3v11M9 9l11-3"/><ellipse cx="6.5" cy="17.5" rx="2.5" ry="1.8"/><ellipse cx="17.5" cy="14.5" rx="2.5" ry="1.8"/>
+    </symbol>
+    <symbol id="icon-moon" viewBox="0 0 24 24">
+      <path d="M20.7 14.4A8.7 8.7 0 0 1 9.6 3.3a8.7 8.7 0 1 0 11.1 11.1ZM17 3v6m-3-3h6"/>
+    </symbol>
+    <symbol id="icon-jump" viewBox="0 0 24 24">
+      <path d="M12 20V4m-6 6 6-6 6 6"/>
+    </symbol>
     <symbol id="icon-notes" viewBox="0 0 24 24">
       <path d="M6 4h10.5A1.5 1.5 0 0 1 18 5.5v13a1.5 1.5 0 0 1-1.5 1.5h-10A1.5 1.5 0 0 1 5 18.5v-13A1.5 1.5 0 0 1 6.5 4M8.5 4v16m3.5-11h3m-3 4h3m-3 4h2"/>
     </symbol>
@@ -72,8 +84,9 @@
       <span aria-hidden="true">PIXI</span>
     </header>
     <nav class="world-nav" aria-label="صفحات عالم بيكسي" dir="rtl">
-      <a href="#" data-destination="welcome" aria-current="page"><svg class="icon" aria-hidden="true"><use href="#icon-home"/></svg><span>البداية</span></a>
+      <a href="#" data-destination="welcome" aria-current="page"><svg class="icon" aria-hidden="true"><use href="#icon-welcome"/></svg><span>البداية</span></a>
       <a href="#emotions" data-destination="emotions"><svg class="icon" aria-hidden="true"><use href="#icon-notes"/></svg><span>المتطلبات</span></a>
+      <a href="#home" data-destination="home"><svg class="icon" aria-hidden="true"><use href="#icon-home"/></svg><span>البيت</span></a>
       <a href="#surprise" data-destination="surprise"><svg class="icon" aria-hidden="true"><use href="#icon-mystery"/></svg><span>السر</span></a>
     </nav>
     <section class="intro" id="intro" dir="rtl" aria-labelledby="welcome-title" hidden>
@@ -106,6 +119,15 @@
           <p id="request-feedback" role="status" hidden></p>
           <button class="chapter-primary request-next" id="next" type="button" hidden></button>
         </div>
+      </div>
+    </section>
+    <section class="home-chapter" id="home" dir="rtl" aria-labelledby="home-title" data-home-action="idle" hidden>
+      <h1 class="sr-only" id="home-title" tabindex="-1">البيت</h1>
+      <div class="home-room" id="home-room" role="img" aria-label="بيكسي في بيتها مع نافذة وسجادة وسرير"></div>
+      <div class="home-actions" role="group" aria-label="أنشطة بيكسي">
+        <button type="button" data-home-action="dance" aria-pressed="false"><svg class="icon" aria-hidden="true"><use href="#icon-music"/></svg>الرقص</button>
+        <button type="button" data-home-action="sleep" aria-pressed="false"><svg class="icon" aria-hidden="true"><use href="#icon-moon"/></svg>النوم</button>
+        <button type="button" data-home-action="jump" aria-pressed="false"><svg class="icon" aria-hidden="true"><use href="#icon-jump"/></svg>القفز</button>
       </div>
     </section>
     <section class="maze" id="surprise" dir="rtl" aria-labelledby="surprise-title" data-phase="intro" hidden>
