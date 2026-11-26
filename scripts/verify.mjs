@@ -527,7 +527,7 @@ try {
   assert.equal(await page.evaluate(() => window.pixiOscillators), 0);
 
   const navigation = page.locator('.world-nav');
-  assert.deepEqual(await navigation.locator('a').allTextContents(), ['البداية', 'المتطلبات', 'البيت', 'السر']);
+  assert.deepEqual(await navigation.locator('a').allTextContents(), ['البداية', 'المتطلبات', 'البيت', 'السر', 'التصميم']);
   const homeLink = navigation.getByRole('link', { name: 'البيت' });
   const home = page.locator('#home');
   await homeLink.click();
@@ -638,8 +638,64 @@ try {
   await requestLink.click();
   await homeAudio();
   assert.deepEqual(errors, []);
+  await homeLink.click();
+  await danceButton.click();
+  await homeAudio('dance');
+  await home.getByRole('link', { name: 'يلا نصمم' }).click();
+  await homeAudio();
+  const design = page.locator('#design');
+  const lessonNext = design.locator('.design-next');
+  const phone = design.locator('.design-phone');
+  await design.locator('canvas').waitFor();
+  assert.equal(new URL(page.url()).hash, '#design');
+  assert.equal(await navigation.getByRole('link', { name: 'التصميم' }).getAttribute('aria-current'), 'page');
+  for (const scene of ['gift', 'mug', 'sip', 'compare', 'phone', 'clutter', 'teacher']) {
+    assert.equal(await design.getAttribute('data-scene'), scene);
+    if (scene === 'sip') {
+      assert.equal(await design.locator('.design-mug').evaluate((mug) => getComputedStyle(mug).animationName), 'none');
+    }
+    if (scene === 'phone') assert.equal(await phone.evaluate((element) => element.inert), true);
+    if (scene === 'clutter') {
+      assert.equal(await design.getAttribute('data-zoomed'), '');
+      assert.equal(await phone.evaluate((element) => element.inert), false);
+      assert.equal(await phone.locator('.design-app-tools span:visible').count(), 8);
+    }
+    await lessonNext.click();
+  }
+  const send = phone.getByRole('button', { name: 'إرسال' });
+  const smallSend = await send.boundingBox();
+  for (const [index, name] of ['Fitts’s Law', 'Hick’s Law', 'Jakob’s Law', 'Miller’s Law', 'Doherty Threshold'].entries()) {
+    assert.equal(await design.locator('.design-heading').textContent(), name);
+    assert.equal(await design.getAttribute('data-applied'), String(index));
+    await lessonNext.click();
+    assert.equal(await design.getAttribute('data-applied'), String(index + 1));
+    assert.equal(await design.locator('.design-progress [data-complete]').count(), index + 1);
+    assert.ok(await design.locator('.design-change').isVisible());
+    if (index === 0) assert.ok((await send.boundingBox()).width > smallSend.width * 1.5);
+    if (index === 1) assert.equal(await phone.locator('.design-app-tools span:visible').count(), 3);
+    if (index === 2) assert.ok(await phone.locator('.design-app-nav').isVisible());
+    if (index === 3) assert.ok(await phone.getByText('الدردشات الأخيرة').isVisible());
+    if (index === 4) {
+      await send.click();
+      assert.equal(await phone.getByRole('status').textContent(), 'تم الإرسال للولو');
+    }
+    await lessonNext.click();
+  }
+  assert.equal(await design.getAttribute('data-scene'), 'done');
+  assert.ok(await phone.getByText('خلّيك قريبة من صديقاتك').isVisible());
+  const phoneBox = await phone.boundingBox();
+  assert.ok(phoneBox.x >= 0 && phoneBox.x + phoneBox.width <= viewport.width);
+  await design.getByRole('button', { name: 'إعادة الدرس' }).click();
+  assert.equal(await design.getAttribute('data-scene'), 'gift');
+  assert.equal(await design.getAttribute('data-applied'), '0');
+  await page.goBack();
+  await home.locator('canvas').waitFor();
+  await surpriseLink.click();
+  await emergency.waitFor();
+  assert.equal(await maze.getAttribute('data-phase'), 'intro');
+  assert.deepEqual(errors, []);
   console.log('Chrome verified automatic entry, sound state with autoplay ' + (autoplay ? 'allowed' : 'blocked') +
-    ', requirements, emergency intro, maze, home action transitions, looping audio, muting, and navigation.');
+    ', requirements, maze, home, the design lesson, sound, and navigation.');
 } finally {
   await browser.close();
 }
