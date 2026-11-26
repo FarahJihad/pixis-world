@@ -238,6 +238,9 @@ export function createMazeView(model, onCharacterClick) {
   const [scaredLeftEye, scaredRightEye, scaredLeftBrow, scaredRightBrow,
     scaredLeftArm, scaredRightArm, scaredSmile, scaredFrown, scaredMouth] = emergencyParts;
   const eyes = [scaredLeftEye, scaredRightEye];
+  // The GLB eyes are symmetric around local +Z, in front of the body origin.
+  const modelForward = Math.atan2(eyes[0].position.x + eyes[1].position.x,
+    eyes[0].position.z + eyes[1].position.z);
   const scaredBrows = [scaredLeftBrow, scaredRightBrow];
   const scaredArms = [scaredLeftArm, scaredRightArm];
   let scared = false;
@@ -376,8 +379,17 @@ export function createMazeView(model, onCharacterClick) {
     const walk = effects && walking ? Math.abs(Math.sin(state.clocks * 15)) * .075 : 0;
     const celebrating = effects && state.phase === 'escaped' ? Math.max(0, 1 - (state.clocks - state.escapedAt) / 2.2) : 0;
     const jump = celebrating * Math.abs(Math.sin((state.clocks - state.escapedAt) * 9)) * .28;
-    const facing = walking ? (x1 > x0 ? .32 : z1 > z0 ? 0 : -.20) : 0;
-    angle = T.MathUtils.lerp(angle, facing, 1 - Math.exp(-delta * 12));
+    if (intro) {
+      angle = 0;
+    } else if (walking || state.phase === 'escaped') {
+      const facing = walking ? Math.atan2(x1 - routeX, z1 - routeZ) - modelForward : 0;
+      const turn = Math.atan2(Math.sin(facing - angle), Math.cos(facing - angle));
+      angle += effects ? turn * (1 - Math.exp(-delta * (walking ? 24 : 12))) : turn;
+    } else if (!effects && state.phase === 'question') {
+      // Reduced motion advances directly to the gate without rendering the walk.
+      const [previousX, previousZ] = trail[index - 1];
+      angle = Math.atan2(x0 - previousX, z0 - previousZ) - modelForward;
+    }
     const introScale = T.MathUtils.lerp(.40, .257, blend);
     pixi.scale.setScalar(intro ? .62 : introScale);
     pixi.position.set(x, intro ? .81 : .344 + walk + jump, z);

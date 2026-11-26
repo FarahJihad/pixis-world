@@ -235,7 +235,7 @@ try {
   }
   assert.equal(await page.locator('#surprise').getAttribute('data-phase'), 'intro');
   assert.equal(await emergency.locator('.emergency-bubble span').textContent(),
-    'انحبست فيها متاهة فيها ثلاثة بوابات مقفلة! ساعدوني!');
+    'انحبست في متاهة فيها ثلاثة بوابات مقفلة! ساعدوني!');
   assert.equal(await page.locator('#maze-instruction').isVisible(), false);
   assert.equal(await page.locator('#maze-question-backdrop').isVisible(), false);
   assert.equal(await page.locator('#maze-begin').textContent(), 'يلا ننقذ بيكسي!');
@@ -368,9 +368,9 @@ try {
   await page.waitForFunction(() => document.querySelector('#surprise').dataset.phase === 'escaped', undefined, { timeout: 25000 });
   assert.ok(await page.locator('#maze-victory').isVisible());
   assert.equal(await page.locator('.victory-card').evaluate((card) => getComputedStyle(card).animationName), 'modal-arrive');
-  assert.equal(await page.locator('.victory-kicker').textContent(), 'MISSION COMPLETE!');
-  assert.equal(await page.locator('.victory-card h2').textContent(), 'مبروك يا مهندسات المستقبل!');
-  assert.equal(await page.locator('.victory-dialogue').textContent(), 'يااااي! طلعت من المتاهة! شكرًا يا أحلى مهندسات برمجيات!');
+  assert.equal(await page.locator('.victory-kicker').count(), 0);
+  assert.equal(await page.locator('.victory-card h2').textContent(), 'انتهت المهمة!');
+  assert.equal(await page.locator('.victory-dialogue').textContent(), 'شكراً يا مهندسات، أقدر أرجع لبيتي بسلام!');
   assert.equal(await page.locator('#saved-requests li').count(), 3);
   if (image) {
     await page.screenshot({ path: image.replace('.png', '-surprise.png') });
