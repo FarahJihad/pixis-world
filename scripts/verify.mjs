@@ -343,7 +343,7 @@ try {
   const gates = page.locator('#maze-progress strong');
   const answers = page.locator('[data-maze-choice]');
   const step = page.locator('#maze-step');
-  const restart = page.locator('#maze-restart');
+  const victoryHome = page.getByRole('button', { name: 'الى البيت', exact: true });
   const questionModal = page.locator('#maze-question-backdrop');
   async function footstepsPlaying(count) {
     await page.waitForFunction((count) =>
@@ -380,14 +380,14 @@ try {
   await page.waitForFunction(() => getComputedStyle(document.querySelector('#emergency-scene')).opacity === '0');
   assert.equal(await emergency.locator('.emergency-beacons').evaluate((beacons) => getComputedStyle(beacons).animationName), 'none');
   await page.waitForFunction(() => document.querySelector('#surprise').dataset.phase === 'waiting');
-  assert.equal(await page.locator('#maze-instruction').textContent(), 'اضغطوا على بيكسي عشان تتحرك!');
+  assert.equal(await page.locator('#maze-instruction').textContent(), 'اضغطوا على بيكسي أو زر المسافة عشان تتحرك!');
   assert.equal(await gates.textContent(), '٠ / ٣');
   await page.waitForFunction(() => getComputedStyle(document.querySelector('.maze-shell')).opacity === '1');
   await footstepsStopped(0, false);
   if (image) {
     await page.screenshot({ path: image.replace('.png', '-maze.png') });
   }
-  await clickPixiAt([0, 4]);
+  await page.keyboard.press('Space');
   await footstepsPlaying(1);
   await page.waitForFunction(() => document.querySelector('#surprise').dataset.phase === 'walking', undefined, { timeout: 3000 })
     .catch((error) => { throw new Error(errors.join('\n') || error.message, { cause: error }); });
@@ -395,6 +395,8 @@ try {
   await clickPixiAt([1, 4], false);
   assert.equal(await maze.getAttribute('data-phase'), 'walking');
   await questionModal.waitFor({ state: 'visible', timeout: 10000 });
+  await page.keyboard.press('Space');
+  assert.equal(await maze.getAttribute('data-phase'), 'question');
   await footstepsStopped(1);
   assert.equal(await step.textContent(), 'البوابة ١ · المتطلبات');
   await checkGate('إذا طلبت منا بيكسي نسوي لها موقع، وش أول شيء المفروض نسويه؟',
@@ -441,7 +443,7 @@ try {
   await answers.nth(2).click();
   await page.waitForFunction(() => document.querySelector('#surprise').dataset.phase === 'waiting' &&
     document.querySelector('#maze-progress strong').textContent === '٣ / ٣');
-  await clickPixiAt([10, 2]);
+  await page.keyboard.press('Space');
   await footstepsPlaying(4);
   await page.waitForFunction(() => document.querySelector('#surprise').dataset.phase === 'walking');
   await page.waitForFunction(() => document.querySelector('#surprise').dataset.phase === 'escaped', undefined, { timeout: 25000 });
@@ -455,7 +457,13 @@ try {
   if (image) {
     await page.screenshot({ path: image.replace('.png', '-surprise.png') });
   }
-  await restart.click();
+  await victoryHome.click();
+  await page.locator('#home-room canvas').waitFor();
+  assert.equal(new URL(page.url()).hash, '#home');
+  assert.equal(await page.locator('.world-nav [aria-current="page"]').textContent(), 'البيت');
+  assert.equal(await page.locator('#maze-victory').isVisible(), false);
+  await page.goBack();
+  await emergency.waitFor();
   assert.equal(await maze.getAttribute('data-phase'), 'intro');
   assert.equal(await gates.textContent(), '٠ / ٣');
   assert.equal(await questionModal.isVisible(), false);
@@ -511,9 +519,59 @@ try {
   await page.locator('#loading').waitFor({ state: 'hidden' });
   assert.equal(await sound.getAttribute('aria-pressed'), 'false');
   assert.equal(await page.evaluate(() => window.pixiOscillators), 0);
+
+  const navigation = page.locator('.world-nav');
+  assert.deepEqual(await navigation.locator('a').allTextContents(), ['البداية', 'المتطلبات', 'البيت', 'السر']);
+  const homeLink = navigation.getByRole('link', { name: 'البيت' });
+  const home = page.locator('#home');
+  await homeLink.click();
+  await home.locator('canvas').waitFor();
+  assert.equal(new URL(page.url()).hash, '#home');
+  assert.equal(await homeLink.getAttribute('aria-current'), 'page');
+  const viewport = page.viewportSize();
+  assert.deepEqual(await home.locator('canvas').boundingBox(), { x: 0, y: 0, ...viewport });
+  const controls = await home.locator('.home-actions').boundingBox();
+  assert.ok(controls.y > viewport.height / 2 && controls.y + controls.height <= viewport.height);
+  if (image) await page.screenshot({ path: image.replace('.png', '-home-mobile.png') });
+  async function homeAction(label, action) {
+    const button = home.getByRole('button', { name: label });
+    await button.click();
+    assert.equal(await home.getAttribute('data-home-action'), action);
+    assert.equal(await button.getAttribute('aria-pressed'), 'true');
+    assert.equal(await home.locator('button[aria-pressed="true"]').count(), 1);
+  }
+  function homeIdle() {
+    return page.waitForFunction(() => document.querySelector('#home').dataset.homeAction === 'idle');
+  }
+  await homeAction('الرقص', 'dance');
+  await homeIdle();
+  const sleepButton = home.locator('button[data-home-action="sleep"]');
+  const wakeButton = home.getByRole('button', { name: 'الاستيقاظ' });
+  async function putPixiToSleep() {
+    await home.getByRole('button', { name: 'النوم', exact: true }).click();
+    await wakeButton.waitFor();
+    assert.equal(await home.getAttribute('data-home-action'), 'asleep');
+    assert.equal(await wakeButton.locator('use').getAttribute('href'), '#icon-sun');
+  }
+  await putPixiToSleep();
+  await wakeButton.click();
+  await homeIdle();
+  assert.equal(await sleepButton.textContent(), 'النوم');
+  assert.equal(await sleepButton.locator('use').getAttribute('href'), '#icon-moon');
+  await putPixiToSleep();
+  await home.getByRole('button', { name: 'القفز' }).click();
+  await page.waitForFunction(() => document.querySelector('#home').dataset.homeAction === 'jump');
+  await homeIdle();
+  await putPixiToSleep();
+  await requestLink.click();
+  await page.locator('#stage canvas').waitFor();
+  await homeLink.click();
+  await home.locator('canvas').waitFor();
+  assert.equal(await home.getAttribute('data-home-action'), 'idle');
+  assert.equal(await home.locator('button[aria-pressed="true"]').count(), 0);
   assert.deepEqual(errors, []);
   console.log('Chrome verified automatic entry, sound state with autoplay ' + (autoplay ? 'allowed' : 'blocked') +
-    ', effects-only audio, requirements, emergency intro, click-to-move gate flow, retries, keyboard answers, victory, restart, and re-entry.');
+    ', effects-only audio, requirements, emergency intro, click-to-move gate flow, retries, keyboard answers, victory, and home actions and re-entry.');
 } finally {
   await browser.close();
 }

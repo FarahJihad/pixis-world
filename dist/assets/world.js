@@ -3,6 +3,7 @@ import { GLTFLoader } from './vendor/GLTFLoader.js';
 import { createScenery } from './scenery.js';
 import { createChapters } from './chapters.js';
 import { createMazeView } from './maze-view.js';
+import { createHomeView } from './home.js';
 import { createLoading } from './loading.js';
 
 const stage = document.querySelector('#stage');
@@ -70,7 +71,7 @@ function characterRig(model) {
   };
 }
 
-function attachInteraction(scene, camera, renderer, scenery, pool, pixi, mazeAvatar) {
+function attachInteraction(scene, camera, renderer, scenery, pool, pixi, mazeAvatar, homeAvatar) {
   const { pivot, eyes, brows, gaze, arms, smile, surprise, frown, feet } = pixi;
   const browRest = brows.map((brow) => brow.position.z);
   const play = chapters.sound;
@@ -83,7 +84,7 @@ function attachInteraction(scene, camera, renderer, scenery, pool, pixi, mazeAva
   const reactionDuration = 1.46;
   let previous = started, reactionStart = -10, ceremonyStart = -10, welcomeStart = -10;
   const reactions = ['wave', 'surprised', 'happy'];
-  let reaction = '', rotationIndex = 0, concern = 0, framing = 0, mazeView;
+  let reaction = '', rotationIndex = 0, concern = 0, framing = 0, mazeView, homeView;
   let turned = 0, turnGoal = 0, pitch = 0, pitchGoal = 0, drag;
   let lastBlink = .85, blinkDelay = 3.2, hoverTime = 0;
   let lookX = 0, lookY = 0;
@@ -193,6 +194,7 @@ function attachInteraction(scene, camera, renderer, scenery, pool, pixi, mazeAva
   });
 
   const resize = () => {
+    if (renderer.domElement.parentElement !== stage) return;
     const width = stage.clientWidth, height = stage.clientHeight;
     if (!width || !height) return;
     const ratio = Math.min(devicePixelRatio, width * height > 2600000 ? 1.3 : 1.65);
@@ -213,6 +215,15 @@ function attachInteraction(scene, camera, renderer, scenery, pool, pixi, mazeAva
     previous = stamp;
     const effects = !reduced.matches;
     const { screen, emotion } = chapters.state;
+    if (screen === 'home') {
+      homeView ??= createHomeView(renderer, homeAvatar, chapters.home);
+      homeView(delta, effects);
+      return;
+    }
+    if (renderer.domElement.parentElement !== stage) {
+      stage.append(renderer.domElement);
+      resize();
+    }
     if (screen === 'surprise') {
       const { maze } = chapters;
       mazeView ??= createMazeView(mazeAvatar, maze.clickCharacter);
@@ -339,9 +350,10 @@ async function boot() {
   const [gltf] = await Promise.all([new GLTFLoader().loadAsync(url, loader.transfer), fonts]);
   const pixi = characterRig(gltf.scene.getObjectByName('PIXI'));
   const mazeAvatar = pixi.pivot.clone(true);
+  const homeAvatar = characterRig(pixi.pivot.clone(true));
   scene.add(pixi.pivot);
   stage.append(renderer.domElement);
-  attachInteraction(scene, camera, renderer, scenery, pool, pixi, mazeAvatar);
+  attachInteraction(scene, camera, renderer, scenery, pool, pixi, mazeAvatar, homeAvatar);
 }
 
 boot().catch((error) => {
