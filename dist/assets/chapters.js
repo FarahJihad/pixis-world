@@ -8,7 +8,7 @@ const routes = { welcome: '', emotions: '#emotions', home: '#home', surprise: '#
 
 export function createChapters(world, status) {
   const sound = createSound();
-  const maze = createMazeGame(sound);
+  const maze = createMazeGame(sound, () => go('home'));
   const home = createHomeChapter(world);
   const dialogue = createDialogue(sound);
   const panel = {

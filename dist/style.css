@@ -561,7 +561,7 @@ button:focus-visible { outline: 2px solid var(--focus); outline-offset: 4px; }
 #request-summary { margin: 18px 0 0; color: #5a3e6e; }
 #request-summary h3 { margin: 0 0 5px; font-size: .9rem; }
 #request-summary ul { display: flex; justify-content: center; flex-wrap: wrap; gap: 5px 20px; margin: 0; padding-inline-start: 20px; font-size: .82rem; }
-.maze-restart { margin-top: 23px; }
+.maze-go-home { margin-top: 23px; }
 
 .emergency-scene {
   position: absolute;

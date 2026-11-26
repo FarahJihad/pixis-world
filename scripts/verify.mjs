@@ -343,7 +343,7 @@ try {
   const gates = page.locator('#maze-progress strong');
   const answers = page.locator('[data-maze-choice]');
   const step = page.locator('#maze-step');
-  const restart = page.locator('#maze-restart');
+  const victoryHome = page.getByRole('button', { name: 'الى البيت', exact: true });
   const questionModal = page.locator('#maze-question-backdrop');
   async function footstepsPlaying(count) {
     await page.waitForFunction((count) =>
@@ -455,7 +455,13 @@ try {
   if (image) {
     await page.screenshot({ path: image.replace('.png', '-surprise.png') });
   }
-  await restart.click();
+  await victoryHome.click();
+  await page.locator('#home-room canvas').waitFor();
+  assert.equal(new URL(page.url()).hash, '#home');
+  assert.equal(await page.locator('.world-nav [aria-current="page"]').textContent(), 'البيت');
+  assert.equal(await page.locator('#maze-victory').isVisible(), false);
+  await page.goBack();
+  await emergency.waitFor();
   assert.equal(await maze.getAttribute('data-phase'), 'intro');
   assert.equal(await gates.textContent(), '٠ / ٣');
   assert.equal(await questionModal.isVisible(), false);

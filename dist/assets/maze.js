@@ -33,7 +33,7 @@ export const gates = [
 const digits = '٠١٢٣';
 const last = route.length - 1;
 
-export function createMazeGame(sound) {
+export function createMazeGame(sound, onGoHome) {
   const chapter = document.querySelector('#surprise');
   const progress = document.querySelector('#maze-progress strong');
   const instruction = document.querySelector('#maze-instruction');
@@ -45,7 +45,7 @@ export function createMazeGame(sound) {
   const choices = [...document.querySelectorAll('[data-maze-choice]')];
   const begin = document.querySelector('#maze-begin');
   const emergencyScene = document.querySelector('#emergency-scene');
-  const restart = document.querySelector('#maze-restart');
+  const goHome = document.querySelector('#maze-go-home');
   const reduced = matchMedia('(prefers-reduced-motion: reduce)');
   const state = {
     phase: 'intro', position: 0, gate: 0, clocks: 0, escapedAt: 0,
@@ -85,7 +85,7 @@ export function createMazeGame(sound) {
       }
       prompt.focus({ preventScroll: true });
     } else if (state.phase === 'escaped') {
-      document.querySelector('#maze-restart').focus({ preventScroll: true });
+      goHome.focus({ preventScroll: true });
     }
   }
 
@@ -181,7 +181,9 @@ export function createMazeGame(sound) {
     refresh();
   });
   choices.forEach((button, index) => button.addEventListener('click', () => answer(index)));
-  restart.addEventListener('click', () => reset());
+  goHome.addEventListener('click', () => {
+    if (active && state.phase === 'escaped') onGoHome();
+  });
   emergencyScene.addEventListener('pointerup', (event) => {
     if (active && state.phase === 'intro' && !begin.contains(event.target)) sound.playEmergencyAlarm();
   });
