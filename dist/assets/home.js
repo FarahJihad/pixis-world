@@ -20,18 +20,22 @@ function idle(time, motion) {
 }
 
 function dance(time, motion) {
-  const beat = time * 10;
-  const sway = motion ? Math.sin(beat * .5) : .48;
+  // Fit the roughly .54-second beat to the recording's full loop to avoid drift.
+  const beatSeconds = 32.9665 / 61;
+  const beat = (time - .20) * Math.PI / beatSeconds;
+  const sway = motion ? Math.sin(beat) : .48;
   return {
-    ...rest, x: rest.x + sway * .31, y: rest.y + (motion ? Math.abs(Math.sin(beat)) * .22 : 0),
+    ...rest, x: rest.x + sway * .31, y: rest.y + (motion ? Math.abs(Math.cos(beat)) * .22 : 0),
     yaw: rest.yaw + sway * .88, roll: sway * -.21,
     leftArm: -.68 + sway * .68, rightArm: .68 + sway * .68,
     leftFoot: sway * .53, rightFoot: sway * -.53
   };
 }
 
+const jumpTakeoff = .19;
+
 function jump(time, motion) {
-  const flight = clamp((time - .19) / .65, 0, 1);
+  const flight = clamp((time - jumpTakeoff) / .65, 0, 1);
   const height = motion ? Math.sin(flight * Math.PI) * 1.38 : 0;
   const crouch = Math.sin(Math.PI * clamp(time / .23, 0, 1));
   const squash = Math.sin(Math.PI * clamp((time - .81) / .31, 0, 1));
@@ -44,19 +48,22 @@ function jump(time, motion) {
 }
 
 const poses = { idle, dance, jump };
-const duration = { dance: 4.45, jump: 1.18 };
+const jumpDuration = 1.18;
 
 function blendPose(from, to, amount) {
   return Object.fromEntries(Object.entries(to).map(([key, value]) => [key, lerp(from[key], value, amount)]));
 }
 
-export function createHomeChapter(world) {
+export function createHomeChapter(world, sound) {
   const chapter = document.querySelector('#home');
   const buttons = [...chapter.querySelectorAll('.home-actions button')];
+  const danceButton = buttons.find((button) => button.dataset.homeAction === 'dance');
+  const danceLabel = danceButton.querySelector('span');
+  const danceIcon = danceButton.querySelector('use');
   const sleepButton = buttons.find((button) => button.dataset.homeAction === 'sleep');
   const sleepLabel = sleepButton.querySelector('span');
   const sleepIcon = sleepButton.querySelector('use');
-  const state = { action: 'idle', visit: 0 };
+  const state = { action: 'idle', visit: 0, jumpSequence: 0 };
   let active = false;
   let afterWake = 'idle';
 
@@ -66,8 +73,13 @@ export function createHomeChapter(world) {
   });
 
   function select(action) {
+    if (action === 'jump' && state.action !== 'jump') state.jumpSequence += 1;
     state.action = action;
     chapter.dataset.homeAction = action;
+    sound.setHomeLoop(action === 'dance' ? 'dance' : action === 'asleep' ? 'snore' : undefined);
+    const dancing = action === 'dance';
+    danceLabel.textContent = dancing ? 'إيقاف الرقص' : 'الرقص';
+    danceIcon.setAttribute('href', dancing ? '#icon-stop' : '#icon-music');
     const busy = action === 'sleep' || action === 'wake';
     const wakeToggle = action === 'asleep' || action === 'wake';
     sleepLabel.textContent = wakeToggle ? 'الاستيقاظ' : 'النوم';
@@ -81,24 +93,30 @@ export function createHomeChapter(world) {
 
   function request(action) {
     if (!active || state.action === 'sleep' || state.action === 'wake') return;
+    if (action !== state.action) sound.stopHomeJump();
+    sound.unlockHomeAudio();
+    if (action === 'jump') sound.prepareHomeAudio();
     if (state.action === 'asleep') {
       afterWake = action === 'sleep' ? 'idle' : action;
       select('wake');
     } else select(action);
   }
 
-  function startDance() { request('dance'); }
+  function toggleDance() { request(state.action === 'dance' ? 'idle' : 'dance'); }
   function startSleep() { request('sleep'); }
   function startJump() { request('jump'); }
-  const handlers = { dance: startDance, sleep: startSleep, jump: startJump };
+  const handlers = { dance: toggleDance, sleep: startSleep, jump: startJump };
   for (const button of buttons) button.addEventListener('click', handlers[button.dataset.homeAction]);
 
   return {
     state,
+    danceTime: sound.danceTime,
+    playJumpSound: sound.playHomeJump,
     cover() { world.dataset.homeReveal = 'covering'; },
     cancelReveal,
     enter(covered) {
       active = true;
+      sound.prepareHomeAudio();
       afterWake = 'idle';
       if (covered) world.dataset.homeReveal = 'covered';
       state.visit += 1;
@@ -107,6 +125,7 @@ export function createHomeChapter(world) {
     leave() {
       if (!active) return;
       active = false;
+      sound.stopHomeJump();
       cancelReveal();
       select('idle');
     },
@@ -158,7 +177,7 @@ function makeEffects(scene) {
     for (const [kind, items] of Object.entries(sprites)) {
       for (const [index, sprite] of items.entries()) {
         sprite.visible = kind === action &&
-          (kind !== 'jump' || time > .19);
+          (kind !== 'jump' || time > jumpTakeoff);
         if (!sprite.visible) continue;
         const t = motion ? (time * .75 + index / items.length) % 1 : .34 + index * .13;
         const side = index % 2 ? -1 : 1;
@@ -195,6 +214,7 @@ export function createHomeView(renderer, rig, chapter) {
   let width = 0, height = 0, visit = -1, action = 'idle', time = 0, entryAge = 0;
   let compact = 0, spacing = 1, foreground = 0, eyeLine = 1.73;
   let pose = rest, startPose = rest;
+  let jumpSequence = 0;
   let bed, bedMotion, rug, sleepingPose;
   const bounds = new T.Box3();
   const pointer = new T.Vector2();
@@ -269,11 +289,13 @@ export function createHomeView(renderer, rig, chapter) {
       look.set(0, 0);
       pointer.set(0, 0);
     }
-    if (action !== state.action) {
+    if (action !== state.action || jumpSequence !== state.jumpSequence) {
       action = state.action;
+      jumpSequence = state.jumpSequence;
       time = 0;
       startPose = pose;
     }
+    const previousTime = time;
     time += delta;
     entryAge += delta;
     if (action === 'sleep' || action === 'asleep' || action === 'wake') {
@@ -282,10 +304,11 @@ export function createHomeView(renderer, rig, chapter) {
       pose = action === 'sleep' && motion && time < .20 ? blendPose(startPose, goal, ease(time / .20)) : goal;
       if (action !== 'asleep' && travel === 1) chapter.finish();
     } else {
-      const goal = onRug(poses[action](time, motion));
+      const poseTime = action === 'dance' ? chapter.danceTime() ?? time : time;
+      const goal = onRug(poses[action](poseTime, motion));
       const blend = !motion ? 1 : ease(time / (action === 'jump' ? .08 : .21));
       pose = blendPose(startPose, goal, blend);
-      if (duration[action] && time >= duration[action]) chapter.finish();
+      if (action === 'jump' && time >= jumpDuration) chapter.finish();
     }
 
     const headingToBed = clamp((pose.x - rug.x) / (bed.mattress.max.x - rug.x), 0, 1);
@@ -318,6 +341,7 @@ export function createHomeView(renderer, rig, chapter) {
     room.light(pose.night);
     const effect = action === 'asleep' ? 'sleep' : action === 'sleep' ? 'idle' : action;
     decorateAction(effect, time, motion, spacing, foreground, bed.pillow);
+    if (action === 'jump' && previousTime <= jumpTakeoff && time > jumpTakeoff) chapter.playJumpSound();
     renderer.render(scene, camera);
     chapter.reveal(motion);
   };

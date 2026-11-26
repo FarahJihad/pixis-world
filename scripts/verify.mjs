@@ -33,18 +33,24 @@ try {
       return window.pixiAlarmMeter = createAnalyser.call(this);
     };
     window.pixiFootstepRuns = [];
+    window.pixiHomeRuns = [];
+    window.pixiJumpRuns = [];
     const createBufferSource = AudioContext.prototype.createBufferSource;
     AudioContext.prototype.createBufferSource = function () {
       const source = createBufferSource.call(this);
       const start = source.start.bind(source);
       const stop = source.stop.bind(source);
       source.start = (...args) => {
+        const runs = !source.loop ? window.pixiJumpRuns :
+          source.loopEnd ? window.pixiFootstepRuns : window.pixiHomeRuns;
         const run = {
           loop: source.loop, loopLength: source.loopEnd - source.loopStart,
           duration: source.buffer.duration, startedAt: this.currentTime,
-          overlap: window.pixiFootstepRuns.some(({ stoppedAt }) => stoppedAt === undefined)
+          offset: args[1], phase: document.querySelector('#home')?.dataset.homeAction,
+          overlap: runs.some(({ stoppedAt }) => stoppedAt === undefined)
         };
-        window.pixiFootstepRuns.push(run);
+        runs.push(run);
+        source.addEventListener('ended', () => { run.stoppedAt ??= this.currentTime; });
         source.stop = (...stopArgs) => {
           run.stoppedAt = this.currentTime;
           return stop(...stopArgs);
@@ -533,45 +539,107 @@ try {
   const controls = await home.locator('.home-actions').boundingBox();
   assert.ok(controls.y > viewport.height / 2 && controls.y + controls.height <= viewport.height);
   if (image) await page.screenshot({ path: image.replace('.png', '-home-mobile.png') });
-  async function homeAction(label, action) {
-    const button = home.getByRole('button', { name: label });
-    await button.click();
-    assert.equal(await home.getAttribute('data-home-action'), action);
-    assert.equal(await button.getAttribute('aria-pressed'), 'true');
-    assert.equal(await home.locator('button[aria-pressed="true"]').count(), 1);
+  const danceButton = home.locator('[data-home-action="dance"]');
+  const sleepButton = home.locator('[data-home-action="sleep"]');
+  const jumpButton = home.locator('[data-home-action="jump"]');
+  const homePhase = (phase) => page.waitForFunction((value) =>
+    document.querySelector('#home').dataset.homeAction === value, phase);
+  const homeRuns = () => page.evaluate(() => window.pixiHomeRuns);
+  async function homeAudio(cue) {
+    const ranges = { dance: [32, 34], snore: [85, 87] };
+    if (cue) {
+      const [min, max] = ranges[cue];
+      await page.waitForFunction(([lo, hi]) => window.pixiHomeRuns.some((run) =>
+        run.stoppedAt === undefined && run.duration > lo && run.duration < hi), [min, max]);
+    }
+    const runs = await homeRuns();
+    const playing = runs.filter(({ stoppedAt }) => stoppedAt === undefined);
+    assert.equal(playing.length, cue ? 1 : 0);
+    assert.ok(runs.every(({ loop, overlap }) => loop && !overlap));
+    if (cue) assert.equal(playing[0].phase, cue === 'snore' ? 'asleep' : 'dance');
+    return playing[0];
   }
-  function homeIdle() {
-    return page.waitForFunction(() => document.querySelector('#home').dataset.homeAction === 'idle');
-  }
-  await homeAction('الرقص', 'dance');
-  await homeIdle();
-  const sleepButton = home.locator('button[data-home-action="sleep"]');
-  const wakeButton = home.getByRole('button', { name: 'الاستيقاظ' });
+  await page.emulateMedia({ reducedMotion: 'no-preference' });
+  await danceButton.click();
+  await homePhase('dance');
+  await homeAudio();
+  await sound.click();
+  await homeAudio('dance');
+  assert.equal(await danceButton.textContent(), 'إيقاف الرقص');
+  assert.equal(await danceButton.locator('use').getAttribute('href'), '#icon-stop');
+  await page.waitForTimeout(5100);
+  assert.equal(await home.getAttribute('data-home-action'), 'dance');
+  await homeAudio('dance');
+  await sound.click();
+  await homeAudio();
+  await sound.click();
+  assert.ok((await homeAudio('dance')).offset > 0);
+  await danceButton.click();
+  await homePhase('idle');
+  await homeAudio();
+  assert.equal(await danceButton.textContent(), 'الرقص');
+  assert.equal(await danceButton.locator('use').getAttribute('href'), '#icon-music');
+
   async function putPixiToSleep() {
-    await home.getByRole('button', { name: 'النوم', exact: true }).click();
-    await wakeButton.waitFor();
-    assert.equal(await home.getAttribute('data-home-action'), 'asleep');
-    assert.equal(await wakeButton.locator('use').getAttribute('href'), '#icon-sun');
+    await sleepButton.click();
+    await homePhase('asleep');
+    await homeAudio('snore');
+    assert.equal(await sleepButton.textContent(), 'الاستيقاظ');
+    assert.equal(await sleepButton.locator('use').getAttribute('href'), '#icon-sun');
   }
+  await danceButton.click();
+  await homeAudio('dance');
+  await sleepButton.click();
+  await homePhase('sleep');
+  await homeAudio();
+  assert.equal(await danceButton.textContent(), 'الرقص');
+  await homePhase('asleep');
+  await homeAudio('snore');
+  await sound.click();
+  await homeAudio();
+  await sound.click();
+  await homeAudio('snore');
+  await danceButton.click();
+  await homePhase('wake');
+  await homeAudio();
+  await homePhase('dance');
+  await homeAudio('dance');
+  await jumpButton.click();
+  await homePhase('jump');
+  await homeAudio();
+  await page.waitForFunction(() => window.pixiJumpRuns.length === 1);
+  await homePhase('idle');
+  assert.deepEqual(await page.evaluate(() => window.pixiJumpRuns.map(({ loop, phase, overlap }) =>
+    ({ loop, phase, overlap }))), [{ loop: false, phase: 'jump', overlap: false }]);
+
+  await page.emulateMedia({ reducedMotion: 'reduce' });
   await putPixiToSleep();
-  await wakeButton.click();
-  await homeIdle();
+  await sleepButton.click();
+  await homeAudio();
+  await homePhase('idle');
   assert.equal(await sleepButton.textContent(), 'النوم');
   assert.equal(await sleepButton.locator('use').getAttribute('href'), '#icon-moon');
   await putPixiToSleep();
-  await home.getByRole('button', { name: 'القفز' }).click();
-  await page.waitForFunction(() => document.querySelector('#home').dataset.homeAction === 'jump');
-  await homeIdle();
+  await jumpButton.click();
+  await homePhase('jump');
+  await homeAudio();
+  await homePhase('idle');
+  assert.equal(await page.evaluate(() => window.pixiJumpRuns.length), 2);
   await putPixiToSleep();
   await requestLink.click();
+  await homeAudio();
   await page.locator('#stage canvas').waitFor();
   await homeLink.click();
   await home.locator('canvas').waitFor();
   assert.equal(await home.getAttribute('data-home-action'), 'idle');
   assert.equal(await home.locator('button[aria-pressed="true"]').count(), 0);
+  await danceButton.click();
+  await homeAudio('dance');
+  await requestLink.click();
+  await homeAudio();
   assert.deepEqual(errors, []);
   console.log('Chrome verified automatic entry, sound state with autoplay ' + (autoplay ? 'allowed' : 'blocked') +
-    ', effects-only audio, requirements, emergency intro, click-to-move gate flow, retries, keyboard answers, victory, and home actions and re-entry.');
+    ', requirements, emergency intro, maze, home action transitions, looping audio, muting, and navigation.');
 } finally {
   await browser.close();
 }

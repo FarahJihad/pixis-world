@@ -28,6 +28,13 @@ export function createSound() {
   let alarmMeter, alarmSamples, alarmActive = false;
   let footstepsLoad, footstepsBuffer, footstepsSource, footstepsGain;
   let footstepsActive = false;
+  const homeTracks = {
+    dance: { file: 'cartoon-music.mp3', offline: typeof PIXI_OFFLINE_DANCE !== 'undefined' && PIXI_OFFLINE_DANCE, volume: .5 },
+    snore: { file: 'snoring.mp3', offline: typeof PIXI_OFFLINE_SNORE !== 'undefined' && PIXI_OFFLINE_SNORE, volume: .9 },
+    jump: { file: 'jump.mp3', offline: typeof PIXI_OFFLINE_JUMP !== 'undefined' && PIXI_OFFLINE_JUMP }
+  };
+  let homeTrack, homeSource, homeGain, homeStartedAt, homeOffset = 0;
+  let jumpSource;
   const alarm = new Audio(typeof PIXI_OFFLINE_ALARM !== 'undefined'
     ? PIXI_OFFLINE_ALARM
     : new URL('./assets/emergency-alarm-69780.mp3', document.baseURI).href);
@@ -110,6 +117,82 @@ export function createSound() {
     alarm.muted = !enabled;
     try { localStorage.setItem('pixi-sound', enabled ? 'on' : 'off'); } catch {}
     if (bus) bus.gain.setTargetAtTime(enabled ? .56 : 0, context.currentTime, .025);
+    if (!enabled) {
+      pauseHomeLoop();
+      stopHomeJump();
+    }
+  }
+
+  function prepareHomeAudio() {
+    if (!prepareAutomatic()) return;
+    for (const track of Object.values(homeTracks)) {
+      if (track.load) continue;
+      const url = track.offline || new URL('./assets/' + track.file, document.baseURI).href;
+      track.load = fetch(url)
+        .then((response) => {
+          if (!response.ok) throw new Error('Could not load ' + track.file);
+          return response.arrayBuffer();
+        })
+        .then((bytes) => context.decodeAudioData(bytes))
+        .then((buffer) => {
+          track.buffer = buffer;
+          if (track === homeTrack) playHomeLoop();
+        })
+        .catch(() => { track.load = undefined; });
+    }
+  }
+
+  function homePlaybackTime() {
+    return homeOffset + context.currentTime - homeStartedAt;
+  }
+
+  function stopHomeJump() {
+    if (!jumpSource) return;
+    jumpSource.stop();
+    jumpSource.disconnect();
+    jumpSource = undefined;
+  }
+
+  function playHomeJump() {
+    const { buffer } = homeTracks.jump;
+    if (!enabled || !buffer || context.state !== 'running' || jumpSource) return;
+    const source = context.createBufferSource();
+    source.buffer = buffer;
+    source.connect(bus);
+    source.onended = () => {
+      source.disconnect();
+      if (jumpSource === source) jumpSource = undefined;
+    };
+    jumpSource = source;
+    source.start();
+  }
+
+  function pauseHomeLoop() {
+    if (!homeSource) return;
+    homeOffset = homePlaybackTime();
+    homeSource.stop();
+    homeSource.disconnect();
+    homeSource = undefined;
+  }
+
+  function playHomeLoop() {
+    if (!homeTrack || homeSource || !unlock()) return;
+    if (!homeTrack.buffer) {
+      prepareHomeAudio();
+      return;
+    }
+    if (!homeGain) {
+      homeGain = context.createGain();
+      homeGain.connect(bus);
+    }
+    homeGain.gain.value = homeTrack.volume;
+    const source = context.createBufferSource();
+    source.buffer = homeTrack.buffer;
+    source.loop = true;
+    source.connect(homeGain);
+    homeStartedAt = context.currentTime;
+    source.start(homeStartedAt, homeOffset % source.buffer.duration);
+    homeSource = source;
   }
 
   function playEmergencyAlarm() {
@@ -200,6 +283,23 @@ export function createSound() {
       playMazeFootsteps();
     },
     stopMazeFootsteps,
+    prepareHomeAudio,
+    unlockHomeAudio: unlock,
+    playHomeJump,
+    stopHomeJump,
+    setHomeLoop(cue) {
+      const track = homeTracks[cue];
+      if (track === homeTrack) return;
+      pauseHomeLoop();
+      homeOffset = 0;
+      homeTrack = track;
+      playHomeLoop();
+    },
+    danceTime() {
+      if (homeTrack === homeTracks.dance && homeSource && context.state === 'running') {
+        return homePlaybackTime();
+      }
+    },
     emergencyLevel() {
       if (!alarmMeter || alarm.paused || !enabled || context.state !== 'running') return 0;
       alarmMeter.getFloatTimeDomainData(alarmSamples);
@@ -231,7 +331,10 @@ export function createSound() {
     },
     toggle(chime = true) {
       setEnabled(!enabled);
-      if (enabled) playMazeFootsteps();
+      if (enabled) {
+        playMazeFootsteps();
+        playHomeLoop();
+      }
       if (alarmActive) playEmergencyAlarm();
       else if (enabled && unlock() && chime) bell(context.currentTime + .016, 76, .09);
     }

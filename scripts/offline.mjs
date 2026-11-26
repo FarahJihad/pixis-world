@@ -5,11 +5,12 @@ import { build } from 'esbuild';
 const output = process.argv[2] || 'PIXI-preview.html';
 const dist = new URL('../dist/', import.meta.url);
 const read = (file, encoding) => readFile(new URL(file, dist), encoding);
-const [html, css, logo, glb, alarm, footsteps, license, fontLicense] = await Promise.all([
+const [html, css, logo, glb, alarm, footsteps, dance, snore, jump, license, fontLicense] = await Promise.all([
   read('index.html', 'utf8'), read('style.css', 'utf8'),
   read('assets/pixi-icon.svg'), read('assets/pixi.glb'),
   read('assets/emergency-alarm-69780.mp3'),
   read('assets/cartoon-fast-footsteps-mgwav-76186.mp3'),
+  read('assets/cartoon-music.mp3'), read('assets/snoring.mp3'), read('assets/jump.mp3'),
   read('assets/vendor/LICENSE-three.txt', 'utf8'), read('assets/fonts/LICENSE-alexandria.txt', 'utf8')
 ]);
 const fontFiles = [...css.matchAll(/url\("\.\/(assets\/fonts\/[^"]+\.woff2)"\)/g)].map((match) => match[1]);
@@ -23,7 +24,10 @@ const { outputFiles: [script] } = await build({
   define: {
     PIXI_OFFLINE_MODEL: JSON.stringify('data:model/gltf-binary;base64,' + glb.toString('base64')),
     PIXI_OFFLINE_ALARM: JSON.stringify('data:audio/mpeg;base64,' + alarm.toString('base64')),
-    PIXI_OFFLINE_FOOTSTEPS: JSON.stringify('data:audio/mpeg;base64,' + footsteps.toString('base64'))
+    PIXI_OFFLINE_FOOTSTEPS: JSON.stringify('data:audio/mpeg;base64,' + footsteps.toString('base64')),
+    PIXI_OFFLINE_DANCE: JSON.stringify('data:audio/mpeg;base64,' + dance.toString('base64')),
+    PIXI_OFFLINE_SNORE: JSON.stringify('data:audio/mpeg;base64,' + snore.toString('base64')),
+    PIXI_OFFLINE_JUMP: JSON.stringify('data:audio/mpeg;base64,' + jump.toString('base64'))
   }
 });
 const logoUrl = 'data:image/svg+xml;base64,' + logo.toString('base64');
