@@ -64,10 +64,10 @@ export function createMazeGame(sound, onGoHome) {
     instruction.hidden = state.phase !== 'waiting';
     if (state.phase === 'waiting') {
       instruction.textContent = state.gate === 0
-        ? 'اضغطوا على بيكسي عشان تتحرك!'
+        ? 'اضغطوا على بيكسي أو زر المسافة عشان تتحرك!'
         : state.gate < gates.length
-          ? 'اضغطوا على بيكسي عشان تفتحوا البوابة التالية!'
-          : 'اضغطوا على بيكسي عشان تهرب!';
+          ? 'اضغطوا على بيكسي أو زر المسافة عشان تفتحوا البوابة التالية!'
+          : 'اضغطوا على بيكسي أو زر المسافة عشان تهرب!';
     }
     backdrop.hidden = !questioning;
     victory.hidden = state.phase !== 'escaped';
@@ -189,7 +189,13 @@ export function createMazeGame(sound, onGoHome) {
   });
   document.addEventListener('keydown', (event) => {
     if (active && state.phase === 'intro' && !begin.contains(event.target)) sound.playEmergencyAlarm();
-    if (!active || state.phase !== 'question' || event.altKey || event.ctrlKey || event.metaKey || event.repeat) return;
+    if (!active || event.defaultPrevented || event.altKey || event.ctrlKey || event.metaKey || event.repeat) return;
+    if (state.phase === 'waiting' && event.code === 'Space' && !event.target.closest?.('button, input, select, textarea, [contenteditable]')) {
+      event.preventDefault();
+      clickCharacter();
+      return;
+    }
+    if (state.phase !== 'question') return;
     const key = '1234'.indexOf(event.key);
     const index = key >= 0 ? key : '١٢٣٤'.indexOf(event.key);
     if (index < 0) return;

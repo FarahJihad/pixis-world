@@ -380,14 +380,14 @@ try {
   await page.waitForFunction(() => getComputedStyle(document.querySelector('#emergency-scene')).opacity === '0');
   assert.equal(await emergency.locator('.emergency-beacons').evaluate((beacons) => getComputedStyle(beacons).animationName), 'none');
   await page.waitForFunction(() => document.querySelector('#surprise').dataset.phase === 'waiting');
-  assert.equal(await page.locator('#maze-instruction').textContent(), 'اضغطوا على بيكسي عشان تتحرك!');
+  assert.equal(await page.locator('#maze-instruction').textContent(), 'اضغطوا على بيكسي أو زر المسافة عشان تتحرك!');
   assert.equal(await gates.textContent(), '٠ / ٣');
   await page.waitForFunction(() => getComputedStyle(document.querySelector('.maze-shell')).opacity === '1');
   await footstepsStopped(0, false);
   if (image) {
     await page.screenshot({ path: image.replace('.png', '-maze.png') });
   }
-  await clickPixiAt([0, 4]);
+  await page.keyboard.press('Space');
   await footstepsPlaying(1);
   await page.waitForFunction(() => document.querySelector('#surprise').dataset.phase === 'walking', undefined, { timeout: 3000 })
     .catch((error) => { throw new Error(errors.join('\n') || error.message, { cause: error }); });
@@ -395,6 +395,8 @@ try {
   await clickPixiAt([1, 4], false);
   assert.equal(await maze.getAttribute('data-phase'), 'walking');
   await questionModal.waitFor({ state: 'visible', timeout: 10000 });
+  await page.keyboard.press('Space');
+  assert.equal(await maze.getAttribute('data-phase'), 'question');
   await footstepsStopped(1);
   assert.equal(await step.textContent(), 'البوابة ١ · المتطلبات');
   await checkGate('إذا طلبت منا بيكسي نسوي لها موقع، وش أول شيء المفروض نسويه؟',
@@ -441,7 +443,7 @@ try {
   await answers.nth(2).click();
   await page.waitForFunction(() => document.querySelector('#surprise').dataset.phase === 'waiting' &&
     document.querySelector('#maze-progress strong').textContent === '٣ / ٣');
-  await clickPixiAt([10, 2]);
+  await page.keyboard.press('Space');
   await footstepsPlaying(4);
   await page.waitForFunction(() => document.querySelector('#surprise').dataset.phase === 'walking');
   await page.waitForFunction(() => document.querySelector('#surprise').dataset.phase === 'escaped', undefined, { timeout: 25000 });
