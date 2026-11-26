@@ -396,14 +396,13 @@ try {
   assert.equal(await maze.getAttribute('data-phase'), 'walking');
   await questionModal.waitFor({ state: 'visible', timeout: 10000 });
   await footstepsStopped(1);
-  assert.match(await step.textContent(), /١.*الرياضيات/);
-  await checkGate('إذا كان عند بيكسي ٣ صناديق، وفي كل صندوق ٨ نجوم، كم نجمة عندها؟', ['١٨', '٢٤', '٢١', '٣٢']);
-  await page.keyboard.press('1');
-  assert.equal(await answers.nth(0).getAttribute('data-wrong'), '');
-  await page.keyboard.press('3');
-  await checkRetry(2, 'اضربوا عدد الصناديق في عدد النجوم الموجودة في كل صندوق.');
+  assert.equal(await step.textContent(), 'البوابة ١ · المتطلبات');
+  await checkGate('إذا طلبت منا بيكسي نسوي لها موقع، وش أول شيء المفروض نسويه؟',
+    ['نبدأ نبرمج الموقع', 'نفهم وش تحتاج بيكسي', 'نختار ألوان الموقع', 'ننشر الموقع']);
+  await page.keyboard.press('4');
+  await checkRetry(3, 'تذكروا أول خطوة سويناها لما طلبت بيكسي منا نسوي لها موقع.');
   assert.equal(await gates.textContent(), '٠ / ٣');
-  await answers.nth(1).click();
+  await page.keyboard.press('2');
   assert.equal(await answers.nth(1).getAttribute('data-correct'), '');
   assert.equal(await gateFeedback.textContent(), 'إجابة صحيحة!');
   await page.waitForFunction(() => document.querySelector('#surprise').dataset.phase === 'waiting' &&
@@ -418,11 +417,13 @@ try {
   await footstepsPlaying(2);
   await questionModal.waitFor({ state: 'visible', timeout: 25000 });
   await footstepsStopped(2);
-  assert.match(await step.textContent(), /٢.*العلوم/);
-  await checkGate('أي من هذه المواد يعتبر موصلًا جيدًا للكهرباء؟', ['الخشب', 'البلاستيك', 'الزجاج', 'النحاس']);
-  await page.keyboard.press('2');
-  await checkRetry(1, 'فكروا في المادة المستخدمة داخل الأسلاك الكهربائية.');
-  await page.keyboard.press('4');
+  assert.equal(await step.textContent(), 'البوابة ٢ · التطوير');
+  await checkGate('كيف يساعدنا الذكاء الاصطناعي في تطوير المواقع؟',
+    ['يساعدنا في كتابة الكود', 'يضمن أن الموقع خالي من الأخطاء', 'يلغي الحاجة إلى التصميم', 'يقرر كل شيء بدلًا عنّا']);
+  await page.keyboard.press('3');
+  await checkRetry(2, 'الذكاء الاصطناعي أداة تساعدنا، لكنه ما يغني عن دور مهندس البرمجيات.');
+  assert.equal(await gates.textContent(), '١ / ٣');
+  await page.keyboard.press('1');
   assert.equal(await gateFeedback.textContent(), 'إجابة صحيحة!');
   await page.waitForFunction(() => document.querySelector('#surprise').dataset.phase === 'waiting' &&
     document.querySelector('#maze-progress strong').textContent === '٢ / ٣');
@@ -431,12 +432,13 @@ try {
   await page.waitForFunction(() => document.querySelector('#surprise').dataset.phase === 'walking');
   await questionModal.waitFor({ state: 'visible', timeout: 25000 });
   await footstepsStopped(3);
-  assert.match(await step.textContent(), /٣.*هندسة البرمجيات/);
+  assert.equal(await step.textContent(), 'البوابة ٣ · الاختبار');
   await checkGate('إذا اكتشفنا خطأ في الموقع بعد البرمجة، وش المفروض نسوي؟',
-    ['نصلح الخطأ ونعيد الاختبار', 'نحذف الموقع كله', 'نتجاهل الخطأ', 'نغير الألوان بس']);
+    ['نحذف الموقع كله', 'نتجاهل الخطأ', 'نصلح الخطأ ونعيد الاختبار', 'نغير الألوان بس']);
   await answers.nth(3).click();
   await checkRetry(3, 'تذكروا كيف صلحنا المشكلة في موقع بيكسي وجربناه مرة ثانية.');
-  await answers.nth(0).click();
+  assert.equal(await gates.textContent(), '٢ / ٣');
+  await answers.nth(2).click();
   await page.waitForFunction(() => document.querySelector('#surprise').dataset.phase === 'waiting' &&
     document.querySelector('#maze-progress strong').textContent === '٣ / ٣');
   await clickPixiAt([10, 2]);
