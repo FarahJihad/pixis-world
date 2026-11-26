@@ -153,9 +153,11 @@ function makeConfetti(scene) {
 
 export function createMazeView(model, onCharacterClick) {
   const target = document.querySelector('#maze-canvas');
+  const mazeFrame = target.parentElement;
+  const emergencyFrame = document.querySelector('.emergency-character');
   let renderer;
   try {
-    renderer = new T.WebGLRenderer({ antialias: true, powerPreference: 'low-power' });
+    renderer = new T.WebGLRenderer({ alpha: true, antialias: true, powerPreference: 'low-power' });
   } catch {
     target.dataset.fallback = '';
     return () => {};
@@ -171,7 +173,7 @@ export function createMazeView(model, onCharacterClick) {
   const scene = new T.Scene();
   const emergencyColor = new T.Color(0x260710);
   const pastelColor = new T.Color(0xe9d7ef);
-  scene.background = emergencyColor.clone();
+  const sceneColor = emergencyColor.clone();
   const hemisphere = new T.HemisphereLight(0xff8991, 0x321321, .82);
   scene.add(hemisphere);
   const sun = new T.DirectionalLight(0xffc7b9, 1.64);
@@ -195,8 +197,9 @@ export function createMazeView(model, onCharacterClick) {
   sign(mapRoot, camera, 'البداية', '#ecd7f5', [1.19, .54], [-5.17, .26, 2.88]);
   const exit = sign(mapRoot, camera, 'المخرج', '#d6e9dc', [1.08, .52], [5.79, .61, 2.49]);
   const confetti = makeConfetti(mapRoot);
-  const introFloor = new T.Mesh(new T.PlaneGeometry(24, 18),
-    new T.MeshStandardMaterial({ color: 0x35111b, roughness: .96, transparent: true }));
+  const transitionFloor = new T.MeshStandardMaterial({ color: 0x35111b, roughness: .96, transparent: true });
+  const emergencyFloor = new T.ShadowMaterial({ opacity: .38 });
+  const introFloor = new T.Mesh(new T.PlaneGeometry(24, 18), transitionFloor);
   introFloor.rotation.x = -Math.PI / 2;
   introFloor.position.y = -.025;
   introFloor.receiveShadow = true;
@@ -224,7 +227,59 @@ export function createMazeView(model, onCharacterClick) {
   const leftRest = leftArm?.position.clone();
   const frownRest = frown?.position.z ?? 0;
   const smileRest = smile?.position.z ?? 0;
+  const emergencyParts = ['Left Eye', 'Right Eye', 'Left Brow', 'Right Brow',
+    'Left Arm', 'Right Arm', 'Smile', 'Sad mouth', 'Surprised mouth'].map((name) => {
+    const part = pixi.getObjectByName(T.PropertyBinding.sanitizeNodeName(name));
+    return {
+      part, position: part.position.clone(), rotation: part.rotation.clone(),
+      scale: part.scale.clone(), visible: part.visible
+    };
+  });
+  const [scaredLeftEye, scaredRightEye, scaredLeftBrow, scaredRightBrow,
+    scaredLeftArm, scaredRightArm, scaredSmile, scaredFrown, scaredMouth] = emergencyParts;
+  const eyes = [scaredLeftEye, scaredRightEye];
+  const scaredBrows = [scaredLeftBrow, scaredRightBrow];
+  const scaredArms = [scaredLeftArm, scaredRightArm];
+  let scared = false;
+
+  function poseEmergency(time, effects) {
+    const tremble = effects ? Math.sin(time * 24) * .65 + Math.sin(time * 17) * .35 : 0;
+    const breath = effects ? (1 + Math.sin(time * 5)) * .5 : 0;
+    pixi.scale.set(.60, .59 + breath * .009, .61);
+    pixi.position.set(tremble * .014, .78 + breath * .019, 0);
+    pixi.rotation.set(.075, tremble * .018, tremble * .026);
+    for (const [i, eye] of eyes.entries()) {
+      const side = i === 0 ? -1 : 1;
+      eye.part.scale.set(eye.scale.x * 1.10, eye.scale.y * 1.29, eye.scale.z);
+      const brow = scaredBrows[i];
+      brow.part.position.set(brow.position.x, brow.position.y + .15, brow.position.z + .18);
+      brow.part.rotation.z = -side * .49;
+      const arm = scaredArms[i];
+      arm.part.position.set(arm.position.x - side * .13, arm.position.y + .23, arm.position.z + .43);
+      arm.part.rotation.y = -side * .55;
+      arm.part.rotation.z = side * (.89 + tremble * .035);
+    }
+    scaredSmile.part.visible = false;
+    scaredFrown.part.visible = false;
+    scaredMouth.part.position.z = scaredMouth.position.z + .15;
+    scaredMouth.part.scale.set(scaredMouth.scale.x * .88, scaredMouth.scale.y, scaredMouth.scale.z);
+    scared = true;
+  }
+
+  function restoreEmergencyPose() {
+    for (const { part, position, rotation, scale, visible } of emergencyParts) {
+      part.position.copy(position);
+      part.rotation.copy(rotation);
+      part.scale.copy(scale);
+      part.visible = visible;
+    }
+    pixi.rotation.x = pixi.rotation.z = 0;
+    scared = false;
+  }
   const cameraStart = new T.Vector3(0, 4, 7.8);
+  const emergencyCamera = new T.OrthographicCamera(-1, 1, 1, -1, .1, 70);
+  emergencyCamera.position.set(0, 2.6, 7.8);
+  emergencyCamera.lookAt(0, .83, 0);
   const cameraMap = new T.Vector3(0, 17, 0);
   const cameraTarget = new T.Vector3(0, .35, 0);
   const introUp = new T.Vector3(0, 1, 0);
@@ -253,39 +308,36 @@ export function createMazeView(model, onCharacterClick) {
   let currentState = { phase: 'intro' };
   return (state, delta, effects) => {
     currentState = state;
+    const intro = state.phase === 'intro';
+    if (!intro && scared) restoreEmergencyPose();
+    const frame = intro ? emergencyFrame : mazeFrame;
+    const frameChanged = target.parentElement !== frame;
+    if (frameChanged) frame.append(target);
     const w = target.clientWidth, h = target.clientHeight;
     if (!w || !h) return;
-    if (w !== width || h !== height) {
+    const resized = w !== width || h !== height;
+    if (resized) {
       width = w;
       height = h;
       renderer.setPixelRatio(Math.min(devicePixelRatio, 1.7));
       renderer.setSize(width, height, false);
-      const aspect = width / height;
-      const blend = state.sceneBlend;
-      const mapHeight = Math.max(7.45, 13.15 / aspect);
-      const introHeight = Math.max(4.7, 7.3 / aspect);
-      const vertical = T.MathUtils.lerp(introHeight, mapHeight, blend);
-      const horizontal = vertical * aspect;
-      camera.left = -horizontal / 2;
-      camera.right = horizontal / 2;
-      camera.top = vertical / 2;
-      camera.bottom = -camera.top;
-      camera.updateProjectionMatrix();
     }
-    if (Math.abs(state.sceneBlend - previousBlend) > .003) {
+    if (resized || frameChanged || Math.abs(state.sceneBlend - previousBlend) > .003) {
       previousBlend = state.sceneBlend;
-      const vertical = T.MathUtils.lerp(Math.max(4.7, 7.3 * height / width),
-        Math.max(7.45, 13.15 * height / width), state.sceneBlend);
-      const horizontal = vertical * width / height;
-      camera.left = -horizontal / 2;
-      camera.right = horizontal / 2;
-      camera.top = vertical / 2;
-      camera.bottom = -camera.top;
-      camera.updateProjectionMatrix();
+      const aspect = width / height;
+      const view = intro ? emergencyCamera : camera;
+      const vertical = intro ? Math.max(2.2, 2.25 / aspect) : T.MathUtils.lerp(
+        Math.max(4.7, 7.3 / aspect), Math.max(7.45, 13.15 / aspect), state.sceneBlend);
+      view.right = vertical * aspect / 2;
+      view.left = -view.right;
+      view.top = vertical / 2;
+      view.bottom = -view.top;
+      view.updateProjectionMatrix();
     }
     const blend = state.sceneBlend;
-    scene.background.copy(emergencyColor).lerp(pastelColor, blend);
-    introFloor.material.opacity = 1 - blend;
+    scene.background = intro ? null : sceneColor.copy(emergencyColor).lerp(pastelColor, blend);
+    introFloor.material = intro ? emergencyFloor : transitionFloor;
+    transitionFloor.opacity = 1 - blend;
     introFloor.visible = blend < .99;
     hemisphere.color.set(0xff8991).lerp(new T.Color(0xfff2ed), blend);
     hemisphere.groundColor.set(0x321321).lerp(new T.Color(0xc4acdd), blend);
@@ -327,8 +379,8 @@ export function createMazeView(model, onCharacterClick) {
     const facing = walking ? (x1 > x0 ? .32 : z1 > z0 ? 0 : -.20) : 0;
     angle = T.MathUtils.lerp(angle, facing, 1 - Math.exp(-delta * 12));
     const introScale = T.MathUtils.lerp(.40, .257, blend);
-    pixi.scale.setScalar(introScale);
-    pixi.position.set(x, .344 + walk + jump, z);
+    pixi.scale.setScalar(intro ? .62 : introScale);
+    pixi.position.set(x, intro ? .81 : .344 + walk + jump, z);
     pixi.rotation.y = angle;
     const worried = state.phase !== 'escaped';
     if (smile) smile.position.z = worried ? smileRest - .14 : smileRest;
@@ -353,8 +405,9 @@ export function createMazeView(model, onCharacterClick) {
     }
     if (leftFoot) leftFoot.rotation.x = walking ? Math.sin(state.clocks * 15) * .31 : 0;
     if (rightFoot) rightFoot.rotation.x = walking ? -Math.sin(state.clocks * 15) * .31 : 0;
+    if (intro) poseEmergency(state.clocks, effects);
     confetti(celebrating > 0 ? state.clocks - state.escapedAt : -1);
-    renderer.render(scene, camera);
+    renderer.render(scene, intro ? emergencyCamera : camera);
   };
 }
 

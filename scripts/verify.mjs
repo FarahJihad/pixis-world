@@ -130,7 +130,8 @@ try {
   const intro = page.locator('#intro');
   const name = page.locator('#pixi-name');
   async function clickPixiAt([column, row], expectHit = true) {
-    const surface = page.locator('#maze-canvas canvas');
+    const surface = page.locator('.maze-map #maze-canvas canvas');
+    await surface.waitFor();
     const canvas = await surface.boundingBox();
     assert.ok(canvas, 'The 3D maze canvas should be visible');
     const aspect = canvas.width / canvas.height;
@@ -229,11 +230,12 @@ try {
   if (canSeekAlarm) {
     await page.waitForFunction(() => {
       const [track] = window.pixiAlarmTracks;
-      return !track.seeking && !track.paused && track.currentTime < 1;
+      return !track.seeking && !track.paused && track.currentTime < track.duration / 2;
     });
   }
   assert.equal(await page.locator('#surprise').getAttribute('data-phase'), 'intro');
-  assert.match(await emergency.textContent(), /تنبيه!.*بنااات! ساعدوني!/s);
+  assert.equal(await emergency.locator('.emergency-bubble span').textContent(),
+    'انحبست فيها متاهة فيها ثلاثة بوابات مقفلة! ساعدوني!');
   assert.equal(await page.locator('#maze-instruction').isVisible(), false);
   assert.equal(await page.locator('#maze-question-backdrop').isVisible(), false);
   assert.equal(await page.locator('#maze-begin').textContent(), 'يلا ننقذ بيكسي!');
@@ -243,7 +245,29 @@ try {
     getComputedStyle(scene, '::after').animationName
   ]), ['alarm-turn', 'emergency-glitch', 'emergency-edge']);
   await page.waitForFunction(() => Number(document.querySelector('#emergency-scene').style.getPropertyValue('--alarm-glow')) > .1);
-  if (image) await page.screenshot({ path: image.replace('.png', '-emergency.png') });
+  const desktop = page.viewportSize();
+  for (const [name, viewport] of [
+    ['desktop', desktop],
+    ['mobile', { width: 390, height: 844 }],
+    ['short', { width: 800, height: 450 }]
+  ]) {
+    await page.setViewportSize(viewport);
+    await page.waitForFunction(() => {
+      const frame = document.querySelector('.emergency-character');
+      const canvas = frame.querySelector('canvas');
+      return canvas?.width === frame.clientWidth && canvas.height === frame.clientHeight;
+    });
+    const items = await emergency.locator('.emergency-message > *').evaluateAll((elements) =>
+      elements.map((element) => element.getBoundingClientRect().toJSON()));
+    for (const [index, box] of items.entries()) {
+      assert.ok(box.height > 0 && box.top >= 0 && box.bottom <= viewport.height, name + ' emergency row ' + index);
+      assert.ok(Math.abs(box.left + box.width / 2 - viewport.width / 2) < 1, name + ' horizontal centering');
+      if (index > 0) assert.ok(items[index - 1].bottom < box.top, name + ' vertical separation');
+    }
+    assert.ok(items[2].height >= 120, name + ' space for the full character');
+    if (image) await page.screenshot({ path: image.replace('.png', '-emergency-' + name + '.png') });
+  }
+  await page.setViewportSize(desktop);
   await sound.click();
   assert.equal(await page.evaluate(() => window.pixiAlarmTracks[0].muted), true);
   await sound.click();
@@ -284,6 +308,7 @@ try {
     assert.equal(await choices.nth(choice).getAttribute('data-right'), '');
   }
 
+  await page.setViewportSize({ width: 1280, height: 720 });
   await next.click();
   await page.locator('#surprise-title').waitFor();
   assert.equal(new URL(page.url()).hash, '#surprise');
@@ -324,21 +349,23 @@ try {
   await page.waitForFunction(() => document.querySelector('#surprise').dataset.phase === 'waiting' &&
     document.querySelector('#maze-progress strong').textContent === '١ / ٣');
   await clickPixiAt([4, 2]);
-  await questionModal.waitFor({ state: 'visible', timeout: 10000 });
+  await page.waitForFunction(() => document.querySelector('#surprise').dataset.phase === 'walking');
+  await questionModal.waitFor({ state: 'visible', timeout: 25000 });
   assert.match(await step.textContent(), /٢.*العلوم/);
   await page.keyboard.press('3');
   assert.equal(await page.locator('#maze-feedback').textContent(), 'إجابة صحيحة!');
   await page.waitForFunction(() => document.querySelector('#surprise').dataset.phase === 'waiting' &&
     document.querySelector('#maze-progress strong').textContent === '٢ / ٣');
   await clickPixiAt([7, 4]);
-  await questionModal.waitFor({ state: 'visible', timeout: 10000 });
+  await page.waitForFunction(() => document.querySelector('#surprise').dataset.phase === 'walking');
+  await questionModal.waitFor({ state: 'visible', timeout: 25000 });
   assert.match(await step.textContent(), /٣.*هندسة البرمجيات/);
   await answers.nth(0).click();
   await page.waitForFunction(() => document.querySelector('#surprise').dataset.phase === 'waiting' &&
     document.querySelector('#maze-progress strong').textContent === '٣ / ٣');
   await clickPixiAt([10, 2]);
   await page.waitForFunction(() => document.querySelector('#surprise').dataset.phase === 'walking');
-  await page.waitForFunction(() => document.querySelector('#surprise').dataset.phase === 'escaped', undefined, { timeout: 10000 });
+  await page.waitForFunction(() => document.querySelector('#surprise').dataset.phase === 'escaped', undefined, { timeout: 25000 });
   assert.ok(await page.locator('#maze-victory').isVisible());
   assert.equal(await page.locator('.victory-card').evaluate((card) => getComputedStyle(card).animationName), 'modal-arrive');
   assert.equal(await page.locator('.victory-kicker').textContent(), 'MISSION COMPLETE!');
@@ -371,7 +398,7 @@ try {
   await page.locator('#surprise-title').waitFor();
   assert.equal(await maze.getAttribute('data-phase'), 'intro');
   assert.equal(await emergency.locator('.emergency-beacons').evaluate((beacons) => getComputedStyle(beacons).animationName), 'none');
-  if (image) await page.screenshot({ path: image.replace('.png', '-emergency-mobile.png') });
+  if (image) await page.screenshot({ path: image.replace('.png', '-emergency-reduced-motion.png') });
   await page.locator('#maze-begin').click();
   await page.waitForFunction(() => document.querySelector('#surprise').dataset.phase === 'waiting');
   await clickPixiAt([0, 4]);

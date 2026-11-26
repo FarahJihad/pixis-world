@@ -354,7 +354,7 @@ button:focus-visible { outline: 2px solid var(--focus); outline-offset: 4px; }
 .maze[data-phase="intro"] .maze-shell { pointer-events: none; }
 .maze[data-phase="intro"] { background: #260710; }
 .maze[data-phase="intro"] .maze-heading { opacity: 0; }
-.maze[data-phase="intro"] .maze-map { border-color: transparent; background: transparent; box-shadow: none; }
+.maze[data-phase="intro"] .maze-map { visibility: hidden; }
 .maze-heading {
   display: flex;
   justify-content: space-between;
@@ -542,20 +542,29 @@ button:focus-visible { outline: 2px solid var(--focus); outline-offset: 4px; }
 .emergency-scene[aria-hidden="true"] :is(.emergency-signal, .emergency-beacons) { visibility: hidden; }
 .emergency-message {
   position: absolute;
-  inset: max(94px, 12vh) 0 max(27px, 6vh);
+  inset: max(94px, 10.5vh) 0 max(24px, 4vh);
   margin-inline: auto;
   z-index: 1;
   display: grid;
-  grid-template-rows: auto auto 1fr auto auto;
+  grid-template-rows: auto auto minmax(0, 1fr) auto auto;
+  gap: clamp(4px, 1vh, 10px);
   justify-items: center;
   width: min(680px, 92vw);
   text-align: center;
 }
 .emergency-scene[aria-hidden="false"] .emergency-message { animation: emergency-reveal .58s ease-out both; }
-.emergency-mark { width: clamp(52px, 7vw, 82px); height: auto; margin-bottom: 4px; fill: none; stroke: #ff6b73; stroke-width: 7; stroke-linecap: round; stroke-linejoin: round; filter: drop-shadow(0 0 14px #f51c4199); }
-.emergency-label { margin: 0 0 12px; color: #fff1ed; font-size: clamp(2rem, 4vw, 3.4rem); font-weight: 850; text-shadow: 0 4px 24px #e51d4073; }
+.emergency-mark { width: clamp(52px, 7vw, 82px); height: auto; fill: none; stroke: #ff6b73; stroke-width: 7; stroke-linecap: round; stroke-linejoin: round; filter: drop-shadow(0 0 14px #f51c4199); }
+.emergency-label { margin: 0; color: #fff1ed; font-size: clamp(2rem, 4vw, 3.4rem); font-weight: 850; text-shadow: 0 4px 24px #e51d4073; }
+.emergency-character {
+  position: relative;
+  width: min(100%, 620px);
+  align-self: stretch;
+  mask-image: linear-gradient(transparent, #000 7% 93%, transparent),
+    linear-gradient(90deg, transparent, #000 7% 93%, transparent);
+  mask-composite: intersect;
+}
+.emergency-character .maze-canvas { pointer-events: none; }
 .emergency-bubble {
-  grid-row: 4;
   max-width: 100%;
   padding: clamp(14px, 2vw, 23px) clamp(17px, 2.7vw, 34px);
   border: 1px solid #ffe6e4aa;
@@ -568,9 +577,7 @@ button:focus-visible { outline: 2px solid var(--focus); outline-offset: 4px; }
   font-weight: 690;
 }
 .emergency-primary {
-  grid-row: 5;
   min-height: 57px;
-  margin-top: 19px;
   padding: 10px 29px;
   border: 1px solid #ffaaa3;
   border-radius: 32px;
@@ -606,9 +613,9 @@ button:focus-visible { outline: 2px solid var(--focus); outline-offset: 4px; }
   .maze-progress strong { font-size: .8rem; }
   .maze-map { border-radius: 15px; }
   .emergency-scene { padding: 14px; }
-  .emergency-message { width: min(590px, 90vw); bottom: max(25px, 5vh); }
+  .emergency-message { width: min(590px, 90vw); top: max(108px, calc(env(safe-area-inset-top) + 98px)); bottom: max(20px, env(safe-area-inset-bottom)); }
   .emergency-bubble { border-radius: 18px; font-size: clamp(.87rem, 3.2vw, 1.1rem); line-height: 1.7; }
-  .emergency-primary { min-height: 49px; margin-top: 13px; padding-inline: 23px; }
+  .emergency-primary { min-height: 49px; padding-inline: 23px; }
   .maze-modal-backdrop, .maze-victory { padding: 13px; }
   .maze-modal { padding: 21px 17px; border-radius: 20px; }
   .maze-options { gap: 8px; margin-top: 15px; }
@@ -623,11 +630,11 @@ button:focus-visible { outline: 2px solid var(--focus); outline-offset: 4px; }
   .maze-shell { padding-top: 68px; padding-bottom: 8px; gap: 5px; }
   .maze-heading h1 { font-size: 1.2rem; }
   .maze-map { max-width: 1160px; }
-  .emergency-message { top: 68px; bottom: 19px; }
+  .emergency-message { top: 63px; bottom: 13px; }
   .emergency-mark { width: 42px; }
-  .emergency-label { margin-bottom: 5px; font-size: 1.8rem; }
+  .emergency-label { font-size: 1.8rem; }
   .emergency-bubble { padding-block: 9px; font-size: .91rem; }
-  .emergency-primary { min-height: 41px; margin-top: 8px; }
+  .emergency-primary { min-height: 41px; }
 }
 @media (prefers-reduced-motion: reduce) {
   .maze-shell, .emergency-scene, .emergency-primary { transition: none; }
