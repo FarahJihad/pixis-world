@@ -667,7 +667,8 @@ try {
     }
     if (scene === 'phone') {
       assert.equal(await phone.evaluate((element) => element.inert), true);
-      assert.match(await design.locator('.design-line').textContent(), /صورة الكوب/);
+      assert.match(await design.locator('.design-heading').textContent(), /صورة الكوب/);
+      assert.match(await design.locator('.design-line').textContent(), /المشكلة/);
     }
     if (scene === 'clutter') {
       assert.equal(await design.getAttribute('data-zoomed'), '');
