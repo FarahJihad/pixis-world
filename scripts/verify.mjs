@@ -20,6 +20,44 @@ try {
   const cdp = await context.newCDPSession(page);
   await page.addInitScript(() => {
     window.pixiOscillators = 0;
+    window.pixiAlarmTracks = [];
+    const NativeAudio = window.Audio;
+    window.Audio = class extends NativeAudio {
+      constructor(src) {
+        super(src);
+        if (src.endsWith('/emergency-alarm-69780.mp3')) window.pixiAlarmTracks.push(this);
+      }
+    };
+    const createAnalyser = AudioContext.prototype.createAnalyser;
+    AudioContext.prototype.createAnalyser = function () {
+      return window.pixiAlarmMeter = createAnalyser.call(this);
+    };
+    window.pixiFootstepRuns = [];
+    const createBufferSource = AudioContext.prototype.createBufferSource;
+    AudioContext.prototype.createBufferSource = function () {
+      const source = createBufferSource.call(this);
+      const start = source.start.bind(source);
+      const stop = source.stop.bind(source);
+      source.start = (...args) => {
+        const run = {
+          loop: source.loop, loopLength: source.loopEnd - source.loopStart,
+          duration: source.buffer.duration, startedAt: this.currentTime,
+          overlap: window.pixiFootstepRuns.some(({ stoppedAt }) => stoppedAt === undefined)
+        };
+        window.pixiFootstepRuns.push(run);
+        source.stop = (...stopArgs) => {
+          run.stoppedAt = this.currentTime;
+          return stop(...stopArgs);
+        };
+        return start(...args);
+      };
+      return source;
+    };
+    const connect = AudioNode.prototype.connect;
+    AudioNode.prototype.connect = function (target, ...args) {
+      if (target === this.context.destination && this instanceof GainNode) window.pixiMasterGain = this.gain;
+      return connect.call(this, target, ...args);
+    };
     window.pixiSpokenLines = 0;
     Object.defineProperty(window, 'speechSynthesis', { value: {
       getVoices: () => [{ localService: true, lang: 'ar' }],
@@ -49,7 +87,7 @@ try {
   if (url === 'https://pixi.test/') {
     const root = fileURLToPath(new URL('../dist', import.meta.url));
     const types = { '.html': 'text/html', '.css': 'text/css', '.js': 'text/javascript',
-      '.glb': 'model/gltf-binary', '.svg': 'image/svg+xml', '.woff2': 'font/woff2' };
+      '.glb': 'model/gltf-binary', '.svg': 'image/svg+xml', '.woff2': 'font/woff2', '.mp3': 'audio/mpeg' };
     await page.route('https://pixi.test/**', async (route) => {
       const { pathname } = new URL(route.request().url());
       const path = resolve(root, '.' + (pathname === '/' ? '/index.html' : pathname));
@@ -117,6 +155,32 @@ try {
   } else assert.equal(startup.oscillators, 0);
   const intro = page.locator('#intro');
   const name = page.locator('#pixi-name');
+  async function clickPixiAt([column, row], expectHit = true) {
+    const surface = page.locator('.maze-map #maze-canvas canvas');
+    await surface.waitFor();
+    const canvas = await surface.boundingBox();
+    assert.ok(canvas, 'The 3D maze canvas should be visible');
+    const aspect = canvas.width / canvas.height;
+    const viewHeight = Math.max(7.45, 13.15 / aspect);
+    const viewWidth = viewHeight * aspect;
+    const x = (column - 6) * .88;
+    const z = (row - 3) * .88;
+    const screenX = canvas.x + (0.5 + x / viewWidth) * canvas.width;
+    const screenY = canvas.y + (0.5 + z / viewHeight) * canvas.height;
+    if (expectHit) {
+      const deadline = Date.now() + 15000;
+      let cursor;
+      do {
+        await page.mouse.move(screenX + 1, screenY);
+        await page.mouse.move(screenX, screenY);
+        cursor = await surface.evaluate((canvas) => canvas.style.cursor);
+      } while (cursor !== 'pointer' && Date.now() < deadline);
+      assert.equal(cursor, 'pointer', 'The visible PIXI model should be under the pointer');
+      assert.equal(await surface.evaluate((canvas, [x, y]) => document.elementFromPoint(x, y) === canvas,
+        [screenX, screenY]), true, 'The maze canvas should receive the click');
+    }
+    await page.mouse.click(screenX, screenY);
+  }
   assert.equal(await name.textContent(), 'PIXI');
   assert.equal(await page.locator('#welcome-title').getAttribute('aria-label'), 'مرحبًا بكم، أنا PIXI');
   assert.equal(await page.evaluate(() => window.pixiWelcomeWaves), 1);
@@ -166,13 +230,85 @@ try {
     await page.waitForTimeout(1050);
     await page.screenshot({ path: image.replace('.png', '-requests.png') });
   }
+  const sound = page.locator('#sound');
+  const beforeAlarm = await page.evaluate(() => window.pixiOscillators);
   await surpriseLink.click();
-  await page.locator('#surprise-title').waitFor();
+  const emergency = page.locator('#emergency-scene');
+  await emergency.waitFor();
+  await page.waitForFunction(() => window.pixiAlarmTracks[0]?.currentTime > .15);
+  assert.deepEqual(await page.evaluate(() => {
+    const [track] = window.pixiAlarmTracks;
+    return [window.pixiAlarmTracks.length, track.loop, track.paused, track.muted, window.pixiOscillators];
+  }), [1, true, false, false, beforeAlarm]);
+  await page.waitForFunction(() => {
+    const meter = window.pixiAlarmMeter;
+    const samples = new Float32Array(meter.fftSize);
+    meter.getFloatTimeDomainData(samples);
+    return samples.some((sample) => Math.abs(sample) > .01);
+  });
+  const canSeekAlarm = await page.evaluate(() => {
+    const [track] = window.pixiAlarmTracks;
+    if (!Number.isFinite(track.duration)) return false;
+    track.currentTime = track.duration - .2;
+    return true;
+  });
+  if (url !== 'https://pixi.test/') assert.ok(canSeekAlarm, 'The browser should know the MP3 duration');
+  if (canSeekAlarm) {
+    await page.waitForFunction(() => {
+      const [track] = window.pixiAlarmTracks;
+      return !track.seeking && !track.paused && track.currentTime < track.duration / 2;
+    });
+  }
+  assert.equal(await page.locator('#surprise').getAttribute('data-phase'), 'intro');
+  assert.equal(await emergency.locator('.emergency-bubble span').textContent(),
+    'انحبست في متاهة فيها ثلاثة بوابات مقفلة! ساعدوني!');
+  assert.equal(await page.locator('#maze-instruction').isVisible(), false);
+  assert.equal(await page.locator('#maze-question-backdrop').isVisible(), false);
+  assert.equal(await page.locator('#maze-begin').textContent(), 'يلا ننقذ بيكسي!');
+  assert.deepEqual(await emergency.evaluate((scene) => [
+    getComputedStyle(scene.querySelector('.emergency-beacons')).animationName,
+    getComputedStyle(scene.querySelector('.emergency-signal')).animationName,
+    getComputedStyle(scene, '::after').animationName
+  ]), ['alarm-turn', 'emergency-glitch', 'emergency-edge']);
+  await page.waitForFunction(() => Number(document.querySelector('#emergency-scene').style.getPropertyValue('--alarm-glow')) > .1);
+  const desktop = page.viewportSize();
+  for (const [name, viewport] of [
+    ['desktop', desktop],
+    ['mobile', { width: 390, height: 844 }],
+    ['short', { width: 800, height: 450 }]
+  ]) {
+    await page.setViewportSize(viewport);
+    await page.waitForFunction(() => {
+      const frame = document.querySelector('.emergency-character');
+      const canvas = frame.querySelector('canvas');
+      return canvas?.width === frame.clientWidth && canvas.height === frame.clientHeight;
+    });
+    const items = await emergency.locator('.emergency-message > *').evaluateAll((elements) =>
+      elements.map((element) => element.getBoundingClientRect().toJSON()));
+    for (const [index, box] of items.entries()) {
+      assert.ok(box.height > 0 && box.top >= 0 && box.bottom <= viewport.height, name + ' emergency row ' + index);
+      assert.ok(Math.abs(box.left + box.width / 2 - viewport.width / 2) < 1, name + ' horizontal centering');
+      if (index > 0) assert.ok(items[index - 1].bottom < box.top, name + ' vertical separation');
+    }
+    assert.ok(items[2].height >= 120, name + ' space for the full character');
+    if (image) await page.screenshot({ path: image.replace('.png', '-emergency-' + name + '.png') });
+  }
+  await page.setViewportSize(desktop);
+  await sound.click();
+  assert.equal(await page.evaluate(() => window.pixiAlarmTracks[0].muted), true);
+  await sound.click();
+  assert.equal(await page.evaluate(() => window.pixiAlarmTracks[0].muted), false);
   await requestLink.click();
+  const alarmStopped = () => window.pixiAlarmTracks.every((track) => track.paused && track.currentTime === 0);
+  assert.ok(await page.evaluate(alarmStopped));
   assert.equal(await requestLink.getAttribute('aria-current'), 'page');
   assert.equal(await surpriseLink.getAttribute('aria-current'), null);
+  await surpriseLink.click();
+  assert.equal(await page.locator('#surprise').getAttribute('data-phase'), 'intro');
+  await page.waitForFunction(() => window.pixiAlarmTracks[0].currentTime > 0);
+  assert.equal(await page.evaluate(() => window.pixiAlarmTracks.length), 1);
+  await requestLink.click();
 
-  const sound = page.locator('#sound');
   const next = page.locator('#next');
   const choices = page.locator('[data-choice]');
   const requestEffect = page.getByRole('button', { name: 'تشغيل مؤثّر الطلب' });
@@ -198,39 +334,138 @@ try {
     assert.equal(await choices.nth(choice).getAttribute('data-right'), '');
   }
 
+  await page.setViewportSize({ width: 1280, height: 720 });
   await next.click();
   await page.locator('#surprise-title').waitFor();
   assert.equal(new URL(page.url()).hash, '#surprise');
-  assert.equal(await page.locator('#saved-requests li').count(), 3);
   await page.locator('#maze-canvas canvas').waitFor();
-  const maze = page.locator('#maze-card');
+  const maze = page.locator('#surprise');
   const gates = page.locator('#maze-progress strong');
   const answers = page.locator('[data-maze-choice]');
   const step = page.locator('#maze-step');
   const restart = page.locator('#maze-restart');
-  await page.locator('#maze-options').waitFor();
-  assert.match(await step.textContent(), /١.*الرياضيات/);
-  await answers.nth(0).click();
+  const questionModal = page.locator('#maze-question-backdrop');
+  async function footstepsPlaying(count) {
+    await page.waitForFunction((count) =>
+      window.pixiFootstepRuns.length === count && window.pixiFootstepRuns.at(-1).stoppedAt === undefined, count);
+  }
+  async function footstepsStopped(count, looped = true) {
+    const runs = await page.evaluate(() => window.pixiFootstepRuns);
+    assert.equal(runs.length, count);
+    assert.ok(runs.every((run) => run.loop && run.duration > 40 && !run.overlap &&
+      run.stoppedAt !== undefined && run.loopLength > 0));
+    if (looped) {
+      const last = runs.at(-1);
+      assert.ok(last.stoppedAt - last.startedAt > last.loopLength);
+    }
+  }
+  async function checkGate(question, options) {
+    assert.equal(await page.locator('#maze-prompt').textContent(), question);
+    assert.deepEqual(await answers.locator('.maze-choice-label').allTextContents(), ['A', 'B', 'C', 'D']);
+    assert.deepEqual(await answers.locator('.maze-choice-text').allTextContents(), options);
+    assert.ok(await answers.evaluateAll(([a, b, c, d]) =>
+      getComputedStyle(a).direction === 'rtl' &&
+      a.offsetLeft > b.offsetLeft && a.offsetLeft === c.offsetLeft && b.offsetLeft === d.offsetLeft &&
+      a.offsetTop === b.offsetTop && c.offsetTop === d.offsetTop && a.offsetTop < c.offsetTop &&
+      Math.abs(a.offsetWidth - b.offsetWidth) <= 1 && Math.abs(a.offsetHeight - c.offsetHeight) <= 1));
+  }
+  const gateFeedback = page.locator('#maze-feedback');
+  async function checkRetry(index, hint) {
+    assert.equal(await maze.getAttribute('data-phase'), 'question');
+    assert.equal(await answers.nth(index).getAttribute('data-wrong'), '');
+    assert.equal(await gateFeedback.textContent(), 'قريبة! ' + hint + ' جرّبوا مرة ثانية.');
+  }
+  await page.locator('#maze-begin').click();
+  assert.ok(await page.evaluate(alarmStopped));
+  await page.waitForFunction(() => getComputedStyle(document.querySelector('#emergency-scene')).opacity === '0');
+  assert.equal(await emergency.locator('.emergency-beacons').evaluate((beacons) => getComputedStyle(beacons).animationName), 'none');
+  await page.waitForFunction(() => document.querySelector('#surprise').dataset.phase === 'waiting');
+  assert.equal(await page.locator('#maze-instruction').textContent(), 'اضغطوا على بيكسي عشان تتحرك!');
   assert.equal(await gates.textContent(), '٠ / ٣');
-  assert.equal(await answers.nth(0).getAttribute('data-wrong'), '');
-  assert.match(await page.locator('#maze-feedback').textContent(), /مرة تانية/);
-  if (image) await page.screenshot({ path: image.replace('.png', '-maze.png') });
-  await answers.nth(1).click();
-  assert.equal(await gates.textContent(), '١ / ٣');
-  await page.getByRole('heading', { name: 'أي جزء من النبات يمتصّ الماء من التربة؟' }).waitFor();
+  await page.waitForFunction(() => getComputedStyle(document.querySelector('.maze-shell')).opacity === '1');
+  await footstepsStopped(0, false);
+  if (image) {
+    await page.screenshot({ path: image.replace('.png', '-maze.png') });
+  }
+  await clickPixiAt([0, 4]);
+  await footstepsPlaying(1);
+  await page.waitForFunction(() => document.querySelector('#surprise').dataset.phase === 'walking', undefined, { timeout: 3000 })
+    .catch((error) => { throw new Error(errors.join('\n') || error.message, { cause: error }); });
+  await page.waitForTimeout(280);
+  await clickPixiAt([1, 4], false);
+  assert.equal(await maze.getAttribute('data-phase'), 'walking');
+  await questionModal.waitFor({ state: 'visible', timeout: 10000 });
+  await footstepsStopped(1);
+  assert.equal(await step.textContent(), 'البوابة ١ · المتطلبات');
+  await checkGate('إذا طلبت منا بيكسي نسوي لها موقع، وش أول شيء المفروض نسويه؟',
+    ['نبدأ نبرمج الموقع', 'نفهم وش تحتاج بيكسي', 'نختار ألوان الموقع', 'ننشر الموقع']);
+  await page.keyboard.press('4');
+  await checkRetry(3, 'تذكروا أول خطوة سويناها لما طلبت بيكسي منا نسوي لها موقع.');
+  assert.equal(await gates.textContent(), '٠ / ٣');
+  await page.keyboard.press('2');
+  assert.equal(await answers.nth(1).getAttribute('data-correct'), '');
+  assert.equal(await gateFeedback.textContent(), 'إجابة صحيحة!');
+  await page.waitForFunction(() => document.querySelector('#surprise').dataset.phase === 'waiting' &&
+    document.querySelector('#maze-progress strong').textContent === '١ / ٣');
+  await clickPixiAt([4, 2]);
+  await footstepsPlaying(2);
+  await page.waitForFunction(() => document.querySelector('#surprise').dataset.phase === 'walking');
+  await sound.click();
+  await page.waitForFunction(() => window.pixiMasterGain.value < .01);
+  await sound.click();
+  await page.waitForFunction(() => window.pixiMasterGain.value > .5);
+  await footstepsPlaying(2);
+  await questionModal.waitFor({ state: 'visible', timeout: 25000 });
+  await footstepsStopped(2);
+  assert.equal(await step.textContent(), 'البوابة ٢ · التطوير');
+  await checkGate('كيف يساعدنا الذكاء الاصطناعي في تطوير المواقع؟',
+    ['يساعدنا في كتابة الكود', 'يضمن أن الموقع خالي من الأخطاء', 'يلغي الحاجة إلى التصميم', 'يقرر كل شيء بدلًا عنّا']);
   await page.keyboard.press('3');
+  await checkRetry(2, 'الذكاء الاصطناعي أداة تساعدنا، لكنه ما يغني عن دور مهندس البرمجيات.');
+  assert.equal(await gates.textContent(), '١ / ٣');
+  await page.keyboard.press('1');
+  assert.equal(await gateFeedback.textContent(), 'إجابة صحيحة!');
+  await page.waitForFunction(() => document.querySelector('#surprise').dataset.phase === 'waiting' &&
+    document.querySelector('#maze-progress strong').textContent === '٢ / ٣');
+  await clickPixiAt([7, 4]);
+  await footstepsPlaying(3);
+  await page.waitForFunction(() => document.querySelector('#surprise').dataset.phase === 'walking');
+  await questionModal.waitFor({ state: 'visible', timeout: 25000 });
+  await footstepsStopped(3);
+  assert.equal(await step.textContent(), 'البوابة ٣ · الاختبار');
+  await checkGate('إذا اكتشفنا خطأ في الموقع بعد البرمجة، وش المفروض نسوي؟',
+    ['نحذف الموقع كله', 'نتجاهل الخطأ', 'نصلح الخطأ ونعيد الاختبار', 'نغير الألوان بس']);
+  await answers.nth(3).click();
+  await checkRetry(3, 'تذكروا كيف صلحنا المشكلة في موقع بيكسي وجربناه مرة ثانية.');
   assert.equal(await gates.textContent(), '٢ / ٣');
-  await page.getByRole('button', { name: 'إظهار الأفكار المكتملة' }).waitFor();
-  await answers.nth(0).click();
-  assert.equal(await gates.textContent(), '٣ / ٣');
-  await page.locator('#maze-card[data-phase="escaped"]').waitFor();
-  assert.match(await page.locator('#maze-prompt').textContent(), /طلعت بيكسي/);
-  assert.ok(await page.locator('#request-summary').isVisible());
+  await answers.nth(2).click();
+  await page.waitForFunction(() => document.querySelector('#surprise').dataset.phase === 'waiting' &&
+    document.querySelector('#maze-progress strong').textContent === '٣ / ٣');
+  await clickPixiAt([10, 2]);
+  await footstepsPlaying(4);
+  await page.waitForFunction(() => document.querySelector('#surprise').dataset.phase === 'walking');
+  await page.waitForFunction(() => document.querySelector('#surprise').dataset.phase === 'escaped', undefined, { timeout: 25000 });
+  assert.ok(await page.locator('#maze-victory').isVisible());
+  await footstepsStopped(4);
+  assert.equal(await page.locator('.victory-card').evaluate((card) => getComputedStyle(card).animationName), 'modal-arrive');
+  assert.equal(await page.locator('.victory-kicker').count(), 0);
+  assert.equal(await page.locator('.victory-card h2').textContent(), 'انتهت المهمة!');
+  assert.equal(await page.locator('.victory-dialogue').textContent(), 'شكراً يا مهندسات، أقدر أرجع لبيتي بسلام!');
+  assert.equal(await page.locator('#saved-requests li').count(), 3);
   if (image) {
     await page.screenshot({ path: image.replace('.png', '-surprise.png') });
   }
+  await restart.click();
+  assert.equal(await maze.getAttribute('data-phase'), 'intro');
+  assert.equal(await gates.textContent(), '٠ / ٣');
+  assert.equal(await questionModal.isVisible(), false);
+  await footstepsStopped(4);
+  await page.locator('#maze-begin').click();
+  await clickPixiAt([0, 4]);
+  await footstepsPlaying(5);
   await page.goBack();
   await page.locator('#emotions-title').waitFor();
+  await footstepsStopped(5, false);
 
   for (const [width, height] of [[1920, 1080], [390, 844]]) {
     await page.setViewportSize({ width, height });
@@ -246,12 +481,20 @@ try {
   await page.emulateMedia({ reducedMotion: 'reduce' });
   await surpriseLink.click();
   await page.locator('#surprise-title').waitFor();
-  assert.equal(await maze.getAttribute('data-phase'), 'escaped');
-  await restart.click();
-  await page.locator('#maze-options').waitFor();
+  assert.equal(await maze.getAttribute('data-phase'), 'intro');
+  assert.equal(await emergency.locator('.emergency-beacons').evaluate((beacons) => getComputedStyle(beacons).animationName), 'none');
+  if (image) await page.screenshot({ path: image.replace('.png', '-emergency-reduced-motion.png') });
+  await page.locator('#maze-begin').click();
+  await page.waitForFunction(() => document.querySelector('#surprise').dataset.phase === 'waiting');
+  await clickPixiAt([0, 4]);
+  await questionModal.waitFor({ state: 'visible', timeout: 10000 });
+  await footstepsStopped(5, false);
+  assert.equal(await maze.getAttribute('data-phase'), 'question');
+  await page.locator('[data-destination="welcome"]').click();
+  await intro.waitFor();
+  await surpriseLink.click();
+  assert.equal(await maze.getAttribute('data-phase'), 'intro');
   assert.equal(await gates.textContent(), '٠ / ٣');
-  assert.match(await step.textContent(), /١.*الرياضيات/);
-  if (image) await page.screenshot({ path: image.replace('.png', '-maze-mobile.png') });
   await page.locator('[data-destination="welcome"]').click();
   await begin.waitFor();
   await intro.waitFor();
@@ -270,7 +513,7 @@ try {
   assert.equal(await page.evaluate(() => window.pixiOscillators), 0);
   assert.deepEqual(errors, []);
   console.log('Chrome verified automatic entry, sound state with autoplay ' + (autoplay ? 'allowed' : 'blocked') +
-    ', effects-only audio, requirements, three maze gates, retry, keyboard answers, escape, and replay.');
+    ', effects-only audio, requirements, emergency intro, click-to-move gate flow, retries, keyboard answers, victory, restart, and re-entry.');
 } finally {
   await browser.close();
 }
