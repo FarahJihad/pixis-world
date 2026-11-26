@@ -393,7 +393,7 @@ button:focus-visible { outline: 2px solid var(--focus); outline-offset: 4px; }
 }
 .home-actions [data-home-action="dance"] { --action-color: #f3cde0; --action-border: #dba6c3; }
 .home-actions [data-home-action="sleep"] { --action-color: #e4d5f5; --action-border: #c6afe7; }
-.home-actions [data-home-action="jump"] { --action-color: #d1edde; --action-border: #a7ccb9; }
+.home-actions [data-home-action="jump"] { --action-color: #e5ccfa; --action-border: #c3a1e1; }
 .home-actions button:hover { filter: brightness(1.04); }
 .home-actions button:disabled { cursor: default; opacity: .76; }
 .home-actions [data-home-action="sleep"][data-awake-toggle] { --action-color: #ffebc7; --action-border: #dbb98e; }
