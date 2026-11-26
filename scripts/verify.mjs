@@ -20,6 +20,18 @@ try {
   const cdp = await context.newCDPSession(page);
   await page.addInitScript(() => {
     window.pixiOscillators = 0;
+    window.pixiAlarmTracks = [];
+    const NativeAudio = window.Audio;
+    window.Audio = class extends NativeAudio {
+      constructor(src) {
+        super(src);
+        if (src.endsWith('/emergency-alarm-69780.mp3')) window.pixiAlarmTracks.push(this);
+      }
+    };
+    const createAnalyser = AudioContext.prototype.createAnalyser;
+    AudioContext.prototype.createAnalyser = function () {
+      return window.pixiAlarmMeter = createAnalyser.call(this);
+    };
     window.pixiSpokenLines = 0;
     Object.defineProperty(window, 'speechSynthesis', { value: {
       getVoices: () => [{ localService: true, lang: 'ar' }],
@@ -49,7 +61,7 @@ try {
   if (url === 'https://pixi.test/') {
     const root = fileURLToPath(new URL('../dist', import.meta.url));
     const types = { '.html': 'text/html', '.css': 'text/css', '.js': 'text/javascript',
-      '.glb': 'model/gltf-binary', '.svg': 'image/svg+xml', '.woff2': 'font/woff2' };
+      '.glb': 'model/gltf-binary', '.svg': 'image/svg+xml', '.woff2': 'font/woff2', '.mp3': 'audio/mpeg' };
     await page.route('https://pixi.test/**', async (route) => {
       const { pathname } = new URL(route.request().url());
       const path = resolve(root, '.' + (pathname === '/' ? '/index.html' : pathname));
@@ -191,23 +203,62 @@ try {
     await page.waitForTimeout(1050);
     await page.screenshot({ path: image.replace('.png', '-requests.png') });
   }
+  const sound = page.locator('#sound');
+  const beforeAlarm = await page.evaluate(() => window.pixiOscillators);
   await surpriseLink.click();
   const emergency = page.locator('#emergency-scene');
   await emergency.waitFor();
+  await page.waitForFunction(() => window.pixiAlarmTracks[0]?.currentTime > .15);
+  assert.deepEqual(await page.evaluate(() => {
+    const [track] = window.pixiAlarmTracks;
+    return [window.pixiAlarmTracks.length, track.loop, track.paused, track.muted, window.pixiOscillators];
+  }), [1, true, false, false, beforeAlarm]);
+  await page.waitForFunction(() => {
+    const meter = window.pixiAlarmMeter;
+    const samples = new Float32Array(meter.fftSize);
+    meter.getFloatTimeDomainData(samples);
+    return samples.some((sample) => Math.abs(sample) > .01);
+  });
+  const canSeekAlarm = await page.evaluate(() => {
+    const [track] = window.pixiAlarmTracks;
+    if (!Number.isFinite(track.duration)) return false;
+    track.currentTime = track.duration - .2;
+    return true;
+  });
+  if (url !== 'https://pixi.test/') assert.ok(canSeekAlarm, 'The browser should know the MP3 duration');
+  if (canSeekAlarm) {
+    await page.waitForFunction(() => {
+      const [track] = window.pixiAlarmTracks;
+      return !track.seeking && !track.paused && track.currentTime < 1;
+    });
+  }
   assert.equal(await page.locator('#surprise').getAttribute('data-phase'), 'intro');
   assert.match(await emergency.textContent(), /تنبيه!.*بنااات! ساعدوني!/s);
   assert.equal(await page.locator('#maze-instruction').isVisible(), false);
   assert.equal(await page.locator('#maze-question-backdrop').isVisible(), false);
   assert.equal(await page.locator('#maze-begin').textContent(), 'يلا ننقذ بيكسي!');
+  assert.deepEqual(await emergency.evaluate((scene) => [
+    getComputedStyle(scene.querySelector('.emergency-beacons')).animationName,
+    getComputedStyle(scene.querySelector('.emergency-signal')).animationName,
+    getComputedStyle(scene, '::after').animationName
+  ]), ['alarm-turn', 'emergency-glitch', 'emergency-edge']);
+  await page.waitForFunction(() => Number(document.querySelector('#emergency-scene').style.getPropertyValue('--alarm-glow')) > .1);
   if (image) await page.screenshot({ path: image.replace('.png', '-emergency.png') });
+  await sound.click();
+  assert.equal(await page.evaluate(() => window.pixiAlarmTracks[0].muted), true);
+  await sound.click();
+  assert.equal(await page.evaluate(() => window.pixiAlarmTracks[0].muted), false);
   await requestLink.click();
+  const alarmStopped = () => window.pixiAlarmTracks.every((track) => track.paused && track.currentTime === 0);
+  assert.ok(await page.evaluate(alarmStopped));
   assert.equal(await requestLink.getAttribute('aria-current'), 'page');
   assert.equal(await surpriseLink.getAttribute('aria-current'), null);
   await surpriseLink.click();
   assert.equal(await page.locator('#surprise').getAttribute('data-phase'), 'intro');
+  await page.waitForFunction(() => window.pixiAlarmTracks[0].currentTime > 0);
+  assert.equal(await page.evaluate(() => window.pixiAlarmTracks.length), 1);
   await requestLink.click();
 
-  const sound = page.locator('#sound');
   const next = page.locator('#next');
   const choices = page.locator('[data-choice]');
   const requestEffect = page.getByRole('button', { name: 'تشغيل مؤثّر الطلب' });
@@ -244,6 +295,9 @@ try {
   const restart = page.locator('#maze-restart');
   const questionModal = page.locator('#maze-question-backdrop');
   await page.locator('#maze-begin').click();
+  assert.ok(await page.evaluate(alarmStopped));
+  await page.waitForFunction(() => getComputedStyle(document.querySelector('#emergency-scene')).opacity === '0');
+  assert.equal(await emergency.locator('.emergency-beacons').evaluate((beacons) => getComputedStyle(beacons).animationName), 'none');
   await page.waitForFunction(() => document.querySelector('#surprise').dataset.phase === 'waiting');
   assert.equal(await page.locator('#maze-instruction').textContent(), 'اضغطوا على بيكسي عشان تتحرك!');
   assert.equal(await gates.textContent(), '٠ / ٣');
@@ -316,6 +370,8 @@ try {
   await surpriseLink.click();
   await page.locator('#surprise-title').waitFor();
   assert.equal(await maze.getAttribute('data-phase'), 'intro');
+  assert.equal(await emergency.locator('.emergency-beacons').evaluate((beacons) => getComputedStyle(beacons).animationName), 'none');
+  if (image) await page.screenshot({ path: image.replace('.png', '-emergency-mobile.png') });
   await page.locator('#maze-begin').click();
   await page.waitForFunction(() => document.querySelector('#surprise').dataset.phase === 'waiting');
   await clickPixiAt([0, 4]);

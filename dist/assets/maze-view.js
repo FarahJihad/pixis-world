@@ -291,10 +291,13 @@ export function createMazeView(model, onCharacterClick) {
     hemisphere.groundColor.set(0x321321).lerp(new T.Color(0xc4acdd), blend);
     hemisphere.intensity = T.MathUtils.lerp(.82, 1.3, blend);
     sun.intensity = T.MathUtils.lerp(1.64, 2.08, blend);
-    alarmA.intensity = (1 - blend) * (12 + Math.sin(state.clocks * 2.1) * 2);
-    alarmB.intensity = (1 - blend) * (9 + Math.sin(state.clocks * 2.1 + Math.PI) * 2);
-    alarmA.position.set(Math.sin(state.clocks * .62) * 3.4, 3.4, Math.cos(state.clocks * .62) * 2.4);
-    alarmB.position.set(-alarmA.position.x, 2.8, -alarmA.position.z);
+    alarmA.intensity = (1 - blend) * (10 + state.alarmGlow * 8);
+    alarmB.intensity = (1 - blend) * (7 + state.alarmGlow * 6);
+    if (state.phase === 'intro') {
+      const beaconAngle = effects ? state.clocks * .62 : 0;
+      alarmA.position.set(Math.sin(beaconAngle) * 3.4, 3.4, Math.cos(beaconAngle) * 2.4);
+      alarmB.position.set(-alarmA.position.x, 2.8, -alarmA.position.z);
+    }
     mapRoot.visible = blend > .015;
     mapRoot.scale.setScalar(Math.max(.001, blend));
     camera.position.lerpVectors(cameraStart, cameraMap, blend);

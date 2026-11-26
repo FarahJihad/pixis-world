@@ -108,7 +108,6 @@ export function createChapters(world, status) {
       const screen = link.dataset.destination;
       if (screen === state.screen) return;
       transitionEnd?.(false);
-      if (screen === 'surprise') sound.play('nav');
       go(screen);
     });
   });

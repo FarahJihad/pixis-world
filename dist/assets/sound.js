@@ -25,6 +25,12 @@ const hz = (note) => 440 * 2 ** ((note - 69) / 12);
 
 export function createSound() {
   let context, bus;
+  let alarmMeter, alarmSamples, alarmActive = false;
+  const alarm = new Audio(typeof PIXI_OFFLINE_ALARM !== 'undefined'
+    ? PIXI_OFFLINE_ALARM
+    : new URL('./assets/emergency-alarm-69780.mp3', document.baseURI).href);
+  alarm.loop = true;
+  alarm.volume = .2;
   let enabled = true;
   try { enabled = localStorage.getItem('pixi-sound') !== 'off'; } catch {}
 
@@ -99,53 +105,51 @@ export function createSound() {
 
   function setEnabled(value) {
     enabled = value;
+    alarm.muted = !enabled;
     try { localStorage.setItem('pixi-sound', enabled ? 'on' : 'off'); } catch {}
     if (bus) bus.gain.setTargetAtTime(enabled ? .56 : 0, context.currentTime, .025);
   }
 
-  function startEmergencyAlarm() {
-    if (!unlock()) return () => {};
-    const when = context.currentTime + .015;
-    const volume = context.createGain();
-    const sources = [];
-    volume.gain.setValueAtTime(.34, when);
-    volume.gain.setTargetAtTime(.0001, when + 1.65, .12);
-    volume.connect(bus);
-    for (let index = 0; index < 4; index++) {
-      const start = when + index * .46;
-      const length = .38;
-      const tone = context.createOscillator();
-      const envelope = context.createGain();
-      tone.type = 'triangle';
-      tone.frequency.setValueAtTime(420, start);
-      tone.frequency.exponentialRampToValueAtTime(610, start + length * .52);
-      tone.frequency.exponentialRampToValueAtTime(420, start + length);
-      envelope.gain.setValueAtTime(.0001, start);
-      envelope.gain.exponentialRampToValueAtTime(.18, start + .025);
-      envelope.gain.exponentialRampToValueAtTime(.0001, start + length);
-      tone.connect(envelope).connect(volume);
-      tone.start(start);
-      tone.stop(start + length);
-      sources.push(tone);
+  function playEmergencyAlarm() {
+    if (!alarmActive || !enabled) return;
+    if (unlock() && !alarmMeter) {
+      const source = context.createMediaElementSource(alarm);
+      alarmMeter = context.createAnalyser();
+      alarmMeter.fftSize = 2048;
+      alarmSamples = new Float32Array(alarmMeter.fftSize);
+      const volume = context.createGain();
+      volume.gain.value = .36;
+      source.connect(alarmMeter).connect(volume).connect(bus);
+      alarm.volume = 1;
     }
-    let stopped = false;
-    return () => {
-      if (stopped) return;
-      stopped = true;
-      const now = context.currentTime;
-      volume.gain.cancelScheduledValues(now);
-      volume.gain.setTargetAtTime(.0001, now, .025);
-      for (const source of sources) {
-        try { source.stop(now + .12); } catch {}
-      }
-    };
+    // Allow navigation and mute controls to keep working if autoplay is blocked.
+    alarm.play().catch(() => {});
+  }
+
+  function stopEmergencyAlarm() {
+    alarmActive = false;
+    alarm.pause();
+    alarm.currentTime = 0;
   }
 
   return {
     get enabled() { return enabled; },
     prepareAutomatic,
     canPlayAutomatically,
-    startEmergencyAlarm,
+    startEmergencyAlarm() {
+      if (alarmActive) return;
+      alarm.muted = !enabled;
+      alarmActive = true;
+      playEmergencyAlarm();
+    },
+    playEmergencyAlarm,
+    stopEmergencyAlarm,
+    emergencyLevel() {
+      if (!alarmMeter || alarm.paused || !enabled || context.state !== 'running') return 0;
+      alarmMeter.getFloatTimeDomainData(alarmSamples);
+      const power = alarmSamples.reduce((sum, sample) => sum + sample * sample, 0);
+      return Math.min(1, Math.sqrt(power / alarmSamples.length) * 3);
+    },
     prepareTyping: unlock,
     typingTick(index) {
       if (!context || !enabled) return;
@@ -171,7 +175,8 @@ export function createSound() {
     },
     toggle(chime = true) {
       setEnabled(!enabled);
-      if (enabled && unlock() && chime) bell(context.currentTime + .016, 76, .09);
+      if (alarmActive) playEmergencyAlarm();
+      else if (enabled && unlock() && chime) bell(context.currentTime + .016, 76, .09);
     }
   };
 }
