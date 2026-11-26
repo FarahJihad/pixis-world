@@ -8,6 +8,7 @@
   <title>PIXI’s World</title>
   <link rel="icon" href="./assets/pixi-icon.svg" type="image/svg+xml">
   <link rel="stylesheet" href="./style.css">
+  <link rel="stylesheet" href="./design.css">
   <link rel="modulepreload" href="./assets/world.js">
 </head>
 <body>
@@ -94,6 +95,7 @@
       <a href="#emotions" data-destination="emotions"><svg class="icon" aria-hidden="true"><use href="#icon-notes"/></svg><span>المتطلبات</span></a>
       <a href="#home" data-destination="home"><svg class="icon" aria-hidden="true"><use href="#icon-home"/></svg><span>البيت</span></a>
       <a href="#surprise" data-destination="surprise"><svg class="icon" aria-hidden="true"><use href="#icon-mystery"/></svg><span>السر</span></a>
+      <a href="#design" data-destination="design"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="m4 16-1 5 5-1 12-12-4-4Zm10-10 4 4M4 16l4 4"/></svg><span>التصميم</span></a>
     </nav>
     <section class="intro" id="intro" dir="rtl" aria-labelledby="welcome-title" hidden>
       <h1 id="welcome-title" aria-label="مرحبًا بكم، أنا PIXI">
@@ -150,6 +152,7 @@
         <button type="button" data-home-action="dance" aria-pressed="false"><svg class="icon" aria-hidden="true"><use href="#icon-music"/></svg><span>الرقص</span></button>
         <button type="button" data-home-action="sleep" aria-pressed="false"><svg class="icon" aria-hidden="true"><use href="#icon-moon"/></svg><span>النوم</span></button>
         <button type="button" data-home-action="jump" aria-pressed="false"><svg class="icon" aria-hidden="true"><use href="#icon-jump"/></svg>القفز</button>
+        <a class="chapter-primary home-design" href="#design" data-destination="design">يلا نصمم</a>
       </div>
     </section>
     <div class="home-transition" aria-hidden="true">
@@ -206,6 +209,67 @@
             <ul id="saved-requests"></ul>
           </div>
           <button class="chapter-primary maze-go-home" id="maze-go-home" type="button">الى البيت</button>
+        </div>
+      </div>
+    </section>
+    <section class="design" id="design" dir="rtl" aria-labelledby="design-title" hidden>
+      <div class="design-board">
+        <h1 class="design-label" id="design-title" tabindex="-1">التصميم</h1>
+        <ol class="design-progress" aria-label="تقدّم تطبيق قواعد التصميم" hidden></ol>
+        <h2 class="design-heading" tabindex="-1"></h2>
+        <p class="design-line"></p>
+        <dl class="design-compare" hidden>
+          <div><dt lang="en">UI</dt><dd></dd></div>
+          <div><dt lang="en">UX</dt><dd></dd></div>
+        </dl>
+        <p class="design-change" role="status" hidden></p>
+        <div class="design-controls">
+          <button class="chapter-primary design-next" type="button"></button>
+          <button class="design-replay" type="button" hidden>إعادة الدرس</button>
+        </div>
+      </div>
+      <div class="design-visual">
+        <div class="design-avatar" aria-hidden="true"><img src="./assets/pixi-icon.svg" alt=""></div>
+        <div class="design-gift" aria-hidden="true">
+          <div class="design-gift-base"></div>
+          <div class="design-gift-lid"></div>
+        </div>
+        <svg class="design-mug" viewBox="0 0 180 165" aria-hidden="true">
+          <defs>
+            <linearGradient id="mug-glaze" x2=".85" y2="1">
+              <stop stop-color="#ffdfef"/><stop offset=".58" stop-color="#f2a9cc"/><stop offset="1" stop-color="#d576a4"/>
+            </linearGradient>
+          </defs>
+          <path d="M129 53c47-24 55 42 11 49" fill="none" stroke="#e491b4" stroke-width="15" stroke-linecap="round"/>
+          <path d="M129 51c47-24 55 42 11 49" fill="none" stroke="#fac2db" stroke-width="8" stroke-linecap="round"/>
+          <ellipse cx="82" cy="62" rx="63" ry="24" fill="#e797b8"/>
+          <ellipse cx="82" cy="62" rx="52" ry="17" fill="#945575"/>
+          <path d="M19 62L29 15q3-13 14-4l22 27q20-3 35 0l24-27q11-9 14 4l10 47-10 54q-6 29-54 29t-55-28Z" fill="url(#mug-glaze)"/>
+          <path d="m30 43 7-24 18 22m53 0 20-23 6 26" fill="#ee9fc2"/>
+          <path d="M60 85h1m47 0h1" stroke="#654059" stroke-width="8" stroke-linecap="round"/>
+          <path d="M79 89q5 8 10 0" fill="none" stroke="#654059" stroke-width="3" stroke-linecap="round"/>
+          <ellipse cx="46" cy="99" rx="10" ry="5" fill="#ed87b2"/><ellipse cx="121" cy="99" rx="10" ry="5" fill="#ed87b2"/>
+        </svg>
+        <div class="design-sparkles" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i><i></i></div>
+        <div class="design-phone" dir="rtl">
+          <div class="design-app" aria-label="تطبيق رسائل بيكسي">
+            <header class="design-app-header">
+              <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 5h14v11h-8l-5 4v-4H5Z"/></svg>
+              <div><strong class="design-app-title"></strong><span class="design-app-subtitle"></span></div>
+            </header>
+            <div class="design-app-tools" aria-hidden="true"></div>
+            <div class="design-app-alert" aria-hidden="true"></div>
+            <div class="design-app-nav" aria-hidden="true"></div>
+            <section class="design-app-threads">
+              <h3></h3>
+              <ul></ul>
+            </section>
+            <footer class="design-app-compose">
+              <span></span>
+              <button class="design-send" type="button" disabled></button>
+            </footer>
+            <p class="design-app-feedback" role="status"></p>
+          </div>
         </div>
       </div>
     </section>

@@ -3,18 +3,21 @@ import { createDialogue } from './dialogue.js';
 import { createRequests } from './requirements.js';
 import { createMazeGame } from './maze.js';
 import { createHomeChapter } from './home.js';
+import { createDesignChapter } from './design.js';
 
-const routes = { welcome: '', emotions: '#emotions', home: '#home', surprise: '#surprise' };
+const routes = { welcome: '', emotions: '#emotions', home: '#home', surprise: '#surprise', design: '#design' };
 
 export function createChapters(world, status) {
   const sound = createSound();
   const maze = createMazeGame(sound, () => go('home'));
   const home = createHomeChapter(world, sound);
+  const design = createDesignChapter(document.querySelector('#design'), sound, () => go('home'));
   const dialogue = createDialogue(sound);
   const panel = {
     emotions: document.querySelector('#emotions'),
     home: document.querySelector('#home'),
-    surprise: document.querySelector('#surprise')
+    surprise: document.querySelector('#surprise'),
+    design: document.querySelector('#design')
   };
   const soundButton = document.querySelector('#sound');
   const begin = document.querySelector('#begin');
@@ -45,13 +48,12 @@ export function createChapters(world, status) {
     if (state.screen === 'emotions') requests.leave();
     state.screen = screen;
     world.dataset.screen = screen;
-    panel.emotions.hidden = screen !== 'emotions';
-    panel.home.hidden = screen !== 'home';
-    panel.surprise.hidden = screen !== 'surprise';
+    for (const [name, section] of Object.entries(panel)) section.hidden = screen !== name;
     if (screen === 'home') home.enter(homeEntry !== undefined);
     else home.leave();
+    if (screen === 'design') design.enter(playEffects);
     for (const link of destinations) {
-      if (link.dataset.destination === screen) link.setAttribute('aria-current', 'page');
+      if (link.closest('nav') && link.dataset.destination === screen) link.setAttribute('aria-current', 'page');
       else link.removeAttribute('aria-current');
     }
     if (screen === 'welcome' && ready) playWelcome(playEffects && sound.enabled);

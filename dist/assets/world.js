@@ -4,6 +4,7 @@ import { createScenery } from './scenery.js';
 import { createChapters } from './chapters.js';
 import { createMazeView } from './maze-view.js';
 import { createHomeView } from './home.js';
+import { createDesignView } from './design-view.js';
 import { createLoading } from './loading.js';
 
 const stage = document.querySelector('#stage');
@@ -71,7 +72,7 @@ function characterRig(model) {
   };
 }
 
-function attachInteraction(scene, camera, renderer, scenery, pool, pixi, mazeAvatar, homeAvatar) {
+function attachInteraction(scene, camera, renderer, scenery, pool, pixi, mazeAvatar, homeAvatar, designAvatar) {
   const { pivot, eyes, brows, gaze, arms, smile, surprise, frown, feet } = pixi;
   const browRest = brows.map((brow) => brow.position.z);
   const play = chapters.sound;
@@ -94,7 +95,7 @@ function attachInteraction(scene, camera, renderer, scenery, pool, pixi, mazeAva
   const reactionDuration = 1.46;
   let previous = started, reactionStart = -10, ceremonyStart = -10, welcomeStart = -10;
   const reactions = ['wave', 'surprised', 'happy'];
-  let reaction = '', rotationIndex = 0, concern = 0, framing = 0, mazeView, homeView;
+  let reaction = '', rotationIndex = 0, concern = 0, framing = 0, mazeView, homeView, designView;
   let turned = 0, turnGoal = 0, pitch = 0, pitchGoal = 0, drag;
   let lastBlink = .85, blinkDelay = 3.2, hoverTime = 0;
   let lookX = 0, lookY = 0, sleep = 0, interest = 0, displeasure = 0;
@@ -231,6 +232,15 @@ function attachInteraction(scene, camera, renderer, scenery, pool, pixi, mazeAva
       homeView(delta, effects);
       return;
     }
+    if (screen === 'design') {
+      designView ??= createDesignView(renderer, designAvatar, scene, scenery);
+      pivot.visible = false;
+      designAvatar.pivot.visible = true;
+      designView(delta, effects);
+      return;
+    }
+    pivot.visible = true;
+    designAvatar.pivot.visible = false;
     if (renderer.domElement.parentElement !== stage) {
       stage.append(renderer.domElement);
       resize();
@@ -389,9 +399,10 @@ async function boot() {
   const pixi = characterRig(gltf.scene.getObjectByName('PIXI'));
   const mazeAvatar = pixi.pivot.clone(true);
   const homeAvatar = characterRig(pixi.pivot.clone(true));
+  const designAvatar = characterRig(pixi.pivot.clone(true));
   scene.add(pixi.pivot);
   stage.append(renderer.domElement);
-  attachInteraction(scene, camera, renderer, scenery, pool, pixi, mazeAvatar, homeAvatar);
+  attachInteraction(scene, camera, renderer, scenery, pool, pixi, mazeAvatar, homeAvatar, designAvatar);
 }
 
 boot().catch((error) => {
