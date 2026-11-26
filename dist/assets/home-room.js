@@ -130,22 +130,27 @@ function plant(scene, x, z, scale) {
 }
 
 function makeBed(scene) {
+  const bed = new T.Group();
+  scene.add(bed);
   const x = 2.93, z = -.96;
   const frame = material(0xa584bb);
   for (const dx of [-1.30, 1.30]) {
-    for (const dz of [-.67, .67]) box(scene, [.19, .36, .19], frame, [x + dx, .18, z + dz], .06);
+    for (const dz of [-.67, .67]) box(bed, [.19, .36, .19], frame, [x + dx, .18, z + dz], .06);
   }
-  box(scene, [3.13, .33, 1.73], frame, [x, .46, z], .15).castShadow = true;
-  box(scene, [.24, 1.48, 1.85], 0xad8aca, [x + 1.52, .79, z], .12);
-  box(scene, [3, .25, 1.60], 0xffede9, [x, .72, z], .12);
-  const cover = box(scene, [2.13, .15, 1.64], 0xae91cc, [x - .40, .90, z], .07);
+  box(bed, [3.13, .33, 1.73], frame, [x, .46, z], .15).castShadow = true;
+  const headboard = box(bed, [.24, 1.48, 1.85], 0xad8aca, [x + 1.52, .79, z], .12);
+  const mattress = box(bed, [3, .25, 1.60], 0xffede9, [x, .72, z], .12);
+  const cover = box(bed, [2.13, .15, 1.64], 0xae91cc, [x - .40, .90, z], .07);
   cover.castShadow = true;
-  box(scene, [2.12, .34, .065], 0xbda0d6, [x - .40, .71, z + .80], .06);
-  box(scene, [.18, .17, 1.65], 0xe4c9ea, [x + .68, .91, z], .06);
-  box(scene, [.70, .20, .94], 0xf9d8e1, [x + 1.05, .92, z - .09], .09).rotation.y = -.06;
+  box(bed, [2.12, .34, .065], 0xbda0d6, [x - .40, .71, z + .80], .06);
+  const fold = box(bed, [.18, .17, 1.65], 0xe4c9ea, [x + .68, .91, z], .06);
+  const pillow = box(bed, [.70, .20, .94], 0xf9d8e1, [x + 1.05, .92, z - .09], .09);
+  pillow.rotation.y = -.06;
+  const seams = [];
   for (const dx of [-1.24, -.84, -.44, -.04, .36]) {
-    box(scene, [.025, .012, 1.44], 0xc5a9dc, [x + dx, .982, z]);
+    seams.push(box(bed, [.025, .012, 1.44], 0xc5a9dc, [x + dx, .982, z]));
   }
+  return { bed, mattress, headboard, pillow, bedding: [cover, fold, ...seams] };
 }
 
 function decorate(scene) {
@@ -173,13 +178,13 @@ function decorate(scene) {
     box(scene, [.12, .34 + index * .032, .23], color,
       [-.08 + index * .145, 2.57 + index * .016, -2.63], .025).rotation.z = index === 3 ? -.18 : 0;
   }
-  box(scene, [.74, .70, .68], 0xe3b3b9, [4.3, .36, .69], .12);
+  const cabinet = box(scene, [.74, .70, .68], 0xe3b3b9, [4.3, .36, .69], .12);
   box(scene, [.46, .11, .018], 0xf4cbd1, [4.3, .44, 1.039], .03);
   mesh(scene, new T.SphereGeometry(.035, 12, 8), 0xab7c98, [4.3, .45, 1.063]);
   mesh(scene, new T.CylinderGeometry(.027, .037, .41, 12), 0xa583ac, [4.3, .86, .69]);
   const shade = new T.MeshStandardMaterial({ color: 0xf5d29d, emissive: 0xf7ad69, emissiveIntensity: .28 });
-  mesh(scene, new T.CylinderGeometry(.13, .28, .32, 24), shade, [4.3, 1.12, .69]);
-  return shade;
+  const lampshade = mesh(scene, new T.CylinderGeometry(.13, .28, .32, 24), shade, [4.3, 1.12, .69]);
+  return { shade, cabinet, lampshade };
 }
 
 export function createHomeRoom(scene) {
@@ -229,10 +234,10 @@ export function createHomeRoom(scene) {
   const furnishings = new T.Group();
   scene.add(furnishings);
   const sky = makeWindow(furnishings);
-  makeBed(furnishings);
+  const { bed, mattress, headboard, pillow, bedding } = makeBed(furnishings);
   plant(furnishings, -4.08, 1.04, 1.15);
   plant(furnishings, -4.42, -1.58, .67);
-  const shade = decorate(furnishings);
+  const { shade, cabinet, lampshade } = decorate(furnishings);
 
   function light(amount) {
     background.copy(day).lerp(night, amount);
@@ -251,6 +256,12 @@ export function createHomeRoom(scene) {
       furnishings.scale.x = spacing;
       lamp.position.x = 4.3 * spacing;
       daylight.position.x = -2.67 * spacing;
+      furnishings.updateWorldMatrix(true, true);
+      const bounds = (object) => new T.Box3().setFromObject(object, true);
+      return {
+        bed: bounds(bed), mattress: bounds(mattress), headboard: bounds(headboard),
+        pillow: bounds(pillow), cabinet: bounds(cabinet).union(bounds(lampshade)), bedding: bedding.map(bounds)
+      };
     }
   };
 }

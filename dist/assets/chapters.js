@@ -9,7 +9,7 @@ const routes = { welcome: '', emotions: '#emotions', home: '#home', surprise: '#
 export function createChapters(world, status) {
   const sound = createSound();
   const maze = createMazeGame(sound);
-  const home = createHomeChapter();
+  const home = createHomeChapter(world);
   const dialogue = createDialogue(sound);
   const panel = {
     emotions: document.querySelector('#emotions'),
@@ -21,7 +21,8 @@ export function createChapters(world, status) {
   const begin = document.querySelector('#begin');
   const destinations = [...document.querySelectorAll('[data-destination]')];
   const state = { screen: 'welcome', emotion: '' };
-  let transitionEnd, transfer, perform, welcomeWave, ready = false;
+  const reducedMotion = matchMedia('(prefers-reduced-motion: reduce)');
+  let transitionEnd, transfer, perform, welcomeWave, homeEntry, ready = false;
 
   function setMood(mood) {
     state.emotion = mood;
@@ -57,7 +58,7 @@ export function createChapters(world, status) {
     panel.emotions.hidden = screen !== 'emotions';
     panel.home.hidden = screen !== 'home';
     panel.surprise.hidden = screen !== 'surprise';
-    if (screen === 'home') home.enter();
+    if (screen === 'home') home.enter(homeEntry !== undefined);
     else home.leave();
     for (const link of destinations) {
       if (link.dataset.destination === screen) link.setAttribute('aria-current', 'page');
@@ -77,15 +78,34 @@ export function createChapters(world, status) {
     if (focus) (panel[screen]?.querySelector('h1') ?? begin).focus({ preventScroll: true });
   }
 
+  function navigate(screen, focus, playEffects) {
+    if (screen === 'home' && screen !== state.screen && ready &&
+        !reducedMotion.matches && !world.hasAttribute('data-fallback')) {
+      if (homeEntry !== undefined) return;
+      home.cover();
+      homeEntry = setTimeout(() => {
+        show(screen, focus, playEffects);
+        homeEntry = undefined;
+      }, 240);
+      return;
+    }
+    if (homeEntry !== undefined) {
+      clearTimeout(homeEntry);
+      homeEntry = undefined;
+      home.cancelReveal();
+    }
+    show(screen, focus, playEffects);
+  }
+
   function fromLocation(focus) {
     const screen = Object.keys(routes).find((key) => routes[key] === location.hash) ?? 'welcome';
     if (screen !== state.screen) transitionEnd?.(false);
-    show(screen, focus, false);
+    navigate(screen, focus, false);
   }
 
   function go(screen) {
     if (location.hash !== routes[screen]) location.hash = routes[screen];
-    show(screen, true, true);
+    navigate(screen, true, true);
   }
 
   function syncSound() {
@@ -112,7 +132,7 @@ export function createChapters(world, status) {
       if (event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return;
       event.preventDefault();
       const screen = link.dataset.destination;
-      if (screen === state.screen) return;
+      if (screen === state.screen && homeEntry === undefined) return;
       transitionEnd?.(false);
       go(screen);
     });

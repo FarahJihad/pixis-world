@@ -535,10 +535,24 @@ try {
   }
   await homeAction('الرقص', 'dance');
   await homeIdle();
-  await homeAction('النوم', 'sleep');
-  await homeAction('القفز', 'jump');
+  const sleepButton = home.locator('button[data-home-action="sleep"]');
+  const wakeButton = home.getByRole('button', { name: 'الاستيقاظ' });
+  async function putPixiToSleep() {
+    await home.getByRole('button', { name: 'النوم', exact: true }).click();
+    await wakeButton.waitFor();
+    assert.equal(await home.getAttribute('data-home-action'), 'asleep');
+    assert.equal(await wakeButton.locator('use').getAttribute('href'), '#icon-sun');
+  }
+  await putPixiToSleep();
+  await wakeButton.click();
   await homeIdle();
-  await homeAction('النوم', 'sleep');
+  assert.equal(await sleepButton.textContent(), 'النوم');
+  assert.equal(await sleepButton.locator('use').getAttribute('href'), '#icon-moon');
+  await putPixiToSleep();
+  await home.getByRole('button', { name: 'القفز' }).click();
+  await page.waitForFunction(() => document.querySelector('#home').dataset.homeAction === 'jump');
+  await homeIdle();
+  await putPixiToSleep();
   await requestLink.click();
   await page.locator('#stage canvas').waitFor();
   await homeLink.click();

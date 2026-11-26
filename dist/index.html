@@ -33,6 +33,9 @@
     <symbol id="icon-moon" viewBox="0 0 24 24">
       <path d="M20.7 14.4A8.7 8.7 0 0 1 9.6 3.3a8.7 8.7 0 1 0 11.1 11.1ZM17 3v6m-3-3h6"/>
     </symbol>
+    <symbol id="icon-sun" viewBox="0 0 24 24">
+      <circle cx="12" cy="12" r="4"/><path d="M12 2v3m0 14v3M2 12h3m14 0h3M5 5l2 2m10 10 2 2M5 19l2-2M17 7l2-2"/>
+    </symbol>
     <symbol id="icon-jump" viewBox="0 0 24 24">
       <path d="M12 20V4m-6 6 6-6 6 6"/>
     </symbol>
@@ -126,10 +129,13 @@
       <div class="home-room" id="home-room" role="img" aria-label="بيكسي في بيتها مع نافذة وسجادة وسرير"></div>
       <div class="home-actions" role="group" aria-label="أنشطة بيكسي">
         <button type="button" data-home-action="dance" aria-pressed="false"><svg class="icon" aria-hidden="true"><use href="#icon-music"/></svg>الرقص</button>
-        <button type="button" data-home-action="sleep" aria-pressed="false"><svg class="icon" aria-hidden="true"><use href="#icon-moon"/></svg>النوم</button>
+        <button type="button" data-home-action="sleep" aria-pressed="false"><svg class="icon" aria-hidden="true"><use href="#icon-moon"/></svg><span>النوم</span></button>
         <button type="button" data-home-action="jump" aria-pressed="false"><svg class="icon" aria-hidden="true"><use href="#icon-jump"/></svg>القفز</button>
       </div>
     </section>
+    <div class="home-transition" aria-hidden="true">
+      <svg viewBox="-56 -54 112 110"><use href="#pixi-outline"/></svg>
+    </div>
     <section class="maze" id="surprise" dir="rtl" aria-labelledby="surprise-title" data-phase="intro" hidden>
       <div class="maze-shell">
         <header class="maze-heading">
