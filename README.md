@@ -1,6 +1,6 @@
 # PIXI’s World
 
-A browser-based 3D workshop with Welcome, Requests, and Surprise screens. PIXI’s round head and small, rounded ears are based on the supplied illustration. The site loads the same binary glTF model included in this project.
+A browser-based 3D workshop with Welcome, Requirements, Home, the Surprise maze, and a Design lesson. The scenes share the same PIXI model.
 
 ## Run locally
 
@@ -19,10 +19,14 @@ The workshop opens automatically when loaded. The speaker icon in the corner con
 | `dist/assets/maze.js` and `dist/assets/maze-view.js` | Editable questions, presenter-controlled gate logic, and the 3D maze |
 | `dist/assets/scenery.js` | The workshop, arched window, furniture, plants, and rug |
 | `dist/assets/requirements.js` | PIXI’s dialogue, requirement activity, and collected summary |
+| `dist/assets/design-copy.js` | Editable Design dialogue, rule explanations, and example app text |
+| `dist/assets/design.js`, `dist/assets/design-view.js`, and `dist/design.css` | Design lesson, 3D character poses, and the changing phone interface |
 | `scripts/model.mjs` | Procedural PIXI sculpt and editable facial, arm, and foot parts |
 | `dist/assets/pixi.glb` | Full 3D model with named parts and physically based materials |
 
 Run `npm ci` to install development dependencies. After changing the character, run `node scripts/export-model.mjs` to regenerate the model. You can also import the GLB into Blender using **File → Import → glTF 2.0**. Keep the named eye, mouth, arm, and foot objects when re-exporting it for the site. The browser applies the interactive animations to these named parts at runtime.
+
+After the maze, go to the house and choose **يلا نصمم**. The **التصميم** navigation tab also opens the lesson directly. Open the gift, try the mug, and then zoom in on PIXI’s phone. For each rule, choose **طبّقي القاعدة** to update the same app. The last rule enables a simulated send action so the audience can see immediate feedback. The lesson can be replayed or closed by returning to the house.
 
 The included Three.js modules are rebuilt by `node scripts/vendor.mjs`. Run `node scripts/offline.mjs PIXI-preview.html` to generate the standalone preview.
 
