@@ -21,7 +21,7 @@ export function createChapters(world, status) {
   };
   const soundButton = document.querySelector('#sound');
   const begin = document.querySelector('#begin');
-  const destinations = [...document.querySelectorAll('[data-destination]')];
+  const destinations = [...document.querySelectorAll('.world-nav [data-destination]')];
   const state = { screen: 'welcome', emotion: '' };
   const reducedMotion = matchMedia('(prefers-reduced-motion: reduce)');
   let transitionEnd, transfer, perform, welcomeWave, homeEntry, ready = false;
@@ -54,7 +54,7 @@ export function createChapters(world, status) {
     else home.leave();
     if (screen === 'design') design.enter(playEffects);
     for (const link of destinations) {
-      if (link.closest('nav') && link.dataset.destination === screen) link.setAttribute('aria-current', 'page');
+      if (link.dataset.destination === screen) link.setAttribute('aria-current', 'page');
       else link.removeAttribute('aria-current');
     }
     if (screen === 'welcome' && ready) playWelcome(playEffects && sound.enabled);

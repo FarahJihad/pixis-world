@@ -373,7 +373,7 @@ button:focus-visible { outline: 2px solid var(--focus); outline-offset: 4px; }
   margin-inline: auto;
   width: min(94%, 710px);
   display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
+  grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: clamp(6px, 1.4vw, 16px);
 }
 .home-actions button {

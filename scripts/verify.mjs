@@ -274,7 +274,7 @@ try {
   }
   assert.equal(await page.locator('#surprise').getAttribute('data-phase'), 'intro');
   assert.equal(await emergency.locator('.emergency-bubble span').textContent(),
-    'انحبست في متاهة فيها ثلاثة بوابات مقفلة! ساعدوني!');
+    'علقت في متاهة فيها ثلاث بوابات مسكّرة! ساعدوني!');
   assert.equal(await page.locator('#maze-instruction').isVisible(), false);
   assert.equal(await page.locator('#maze-question-backdrop').isVisible(), false);
   assert.equal(await page.locator('#maze-begin').textContent(), 'يلا ننقذ بيكسي!');
@@ -350,10 +350,10 @@ try {
   const palette = await page.locator('[data-spot="theme"] .room-objects').boundingBox();
   assert.ok(Math.abs(palette.x + palette.width / 2 - 800) < 8 && palette.y >= 690);
   await reactTo('blush', 'theme', 'الوردي ناعم');
-  await reactTo('mint', 'theme', 'ما أحسّه يشبهني', false);
-  await reactTo('lavender', 'theme', 'البنفسجي مرّة');
+  await reactTo('mint', 'theme', 'ما أحس إنه يناسبني', false);
+  await reactTo('lavender', 'theme', 'البنفسجي يناسب عالمي');
   if (image) await page.screenshot({ path: image.replace('.png', '-theme.png'), animations: 'disabled' });
-  assert.match(await compare.textContent(), /بألوان لطيفة/);
+  assert.match(await compare.textContent(), /ألوان لطيفة/);
   await next.click();
   assert.equal(await savedCards.count(), 1);
   await page.locator('#request-replay').click();
@@ -363,8 +363,8 @@ try {
   assert.equal(await savedCards.count(), 1);
   await next.click();
 
-  await reactTo('plant', 'decor', 'عندي نباتات كثير', false);
-  await reactTo('flower', 'decor', 'الوردة خلت');
+  await reactTo('plant', 'decor', 'عندي نباتات كثيرة', false);
+  await reactTo('flower', 'decor', 'الوردة خلّت');
   await reactTo('star', 'decor', 'النجمة أضافت');
   assert.equal(await decoration.getAttribute('data-item'), 'star');
   const shelf = await decoration.boundingBox();
@@ -384,9 +384,9 @@ try {
   const skyChoices = await page.locator('[data-spot="sky"] .room-objects').boundingBox();
   assert.ok(skyChoices.x < 100 && skyChoices.y >= 425);
   await reactTo('morning', 'sky', 'أحس عالمي صار منعش');
-  await reactTo('night', 'sky', 'أغمق من اللي أبيه', false);
+  await reactTo('night', 'sky', 'أغمق من اللازم', false);
   if (image) await page.screenshot({ path: image.replace('.png', '-sky.png'), animations: 'disabled' });
-  await reactTo('sunset', 'sky', 'الغروب مرّة جميل');
+  await reactTo('sunset', 'sky', 'من نافذتي حلو');
   assert.equal(new Set(messages).size, 9);
   await next.click();
   assert.equal(await savedCards.count(), 3);
@@ -426,7 +426,7 @@ try {
   const gates = page.locator('#maze-progress strong');
   const answers = page.locator('[data-maze-choice]');
   const step = page.locator('#maze-step');
-  const victoryHome = page.getByRole('button', { name: 'الى البيت', exact: true });
+  const victoryHome = page.locator('#maze-go-home');
   const questionModal = page.locator('#maze-question-backdrop');
   async function footstepsPlaying(count) {
     await page.waitForFunction((count) =>
@@ -482,10 +482,10 @@ try {
   assert.equal(await maze.getAttribute('data-phase'), 'question');
   await footstepsStopped(1);
   assert.equal(await step.textContent(), 'البوابة ١ · المتطلبات');
-  await checkGate('إذا طلبت منا بيكسي نسوي لها موقع، وش أول شيء المفروض نسويه؟',
-    ['نبدأ نبرمج الموقع', 'نفهم وش تحتاج بيكسي', 'نختار ألوان الموقع', 'ننشر الموقع']);
+  await checkGate('بيكسي طلبت منا موقع. كيف نبدأ؟',
+    ['نبدأ نبرمج الموقع', 'نفهم اللي تحتاجه بيكسي', 'نختار ألوان الموقع', 'ننشر الموقع']);
   await page.keyboard.press('4');
-  await checkRetry(3, 'تذكروا أول خطوة سويناها لما طلبت بيكسي منا نسوي لها موقع.');
+  await checkRetry(3, 'تذكّروا أول خطوة لما طلبت بيكسي موقعها.');
   assert.equal(await gates.textContent(), '٠ / ٣');
   await page.keyboard.press('2');
   assert.equal(await answers.nth(1).getAttribute('data-correct'), '');
@@ -504,9 +504,9 @@ try {
   await footstepsStopped(2);
   assert.equal(await step.textContent(), 'البوابة ٢ · التطوير');
   await checkGate('كيف يساعدنا الذكاء الاصطناعي في تطوير المواقع؟',
-    ['يساعدنا في كتابة الكود', 'يضمن أن الموقع خالي من الأخطاء', 'يلغي الحاجة إلى التصميم', 'يقرر كل شيء بدلًا عنّا']);
+    ['يساعدنا في كتابة الكود', 'يضمن إن الموقع ما فيه أخطاء', 'يخلّينا نستغني عن التصميم', 'يقرر كل شي عنّا']);
   await page.keyboard.press('3');
-  await checkRetry(2, 'الذكاء الاصطناعي أداة تساعدنا، لكنه ما يغني عن دور مهندس البرمجيات.');
+  await checkRetry(2, 'الذكاء الاصطناعي يساعدنا، ودور مهندس البرمجيات يبقى مهم.');
   assert.equal(await gates.textContent(), '١ / ٣');
   await page.keyboard.press('1');
   assert.equal(await gateFeedback.textContent(), 'إجابة صحيحة!');
@@ -518,10 +518,10 @@ try {
   await questionModal.waitFor({ state: 'visible', timeout: 25000 });
   await footstepsStopped(3);
   assert.equal(await step.textContent(), 'البوابة ٣ · الاختبار');
-  await checkGate('إذا اكتشفنا خطأ في الموقع بعد البرمجة، وش المفروض نسوي؟',
+  await checkGate('لو لقينا خطأ بعد البرمجة، كيف نتصرّف؟',
     ['نحذف الموقع كله', 'نتجاهل الخطأ', 'نصلح الخطأ ونعيد الاختبار', 'نغير الألوان بس']);
   await answers.nth(3).click();
-  await checkRetry(3, 'تذكروا كيف صلحنا المشكلة في موقع بيكسي وجربناه مرة ثانية.');
+  await checkRetry(3, 'تذكّروا كيف صلّحنا المشكلة في موقع بيكسي وجرّبناه مرة ثانية.');
   assert.equal(await gates.textContent(), '٢ / ٣');
   await answers.nth(2).click();
   await page.waitForFunction(() => document.querySelector('#surprise').dataset.phase === 'waiting' &&
@@ -535,7 +535,7 @@ try {
   assert.equal(await page.locator('.victory-card').evaluate((card) => getComputedStyle(card).animationName), 'modal-arrive');
   assert.equal(await page.locator('.victory-kicker').count(), 0);
   assert.equal(await page.locator('.victory-card h2').textContent(), 'انتهت المهمة!');
-  assert.equal(await page.locator('.victory-dialogue').textContent(), 'شكراً يا مهندسات، أقدر أرجع لبيتي بسلام!');
+  assert.equal(await page.locator('.victory-dialogue').textContent(), 'شكرًا يا مهندسات! أقدر أرجع لبيتي بسلام.');
   assert.equal(await page.locator('#saved-requests li').count(), 3);
   if (image) {
     await page.screenshot({ path: image.replace('.png', '-surprise.png') });
@@ -611,7 +611,7 @@ try {
   assert.equal(await page.evaluate(() => window.pixiOscillators), 0);
 
   const navigation = page.locator('.world-nav');
-  assert.deepEqual(await navigation.locator('a').allTextContents(), ['البداية', 'المتطلبات', 'البيت', 'السر', 'التصميم']);
+  assert.deepEqual(await navigation.locator('a').allTextContents(), ['البداية', 'المتطلبات', 'التصميم', 'البيت', 'السر']);
   const homeLink = navigation.getByRole('link', { name: 'البيت' });
   const home = page.locator('#home');
   await homeLink.click();
@@ -622,6 +622,7 @@ try {
   assert.deepEqual(await home.locator('canvas').boundingBox(), { x: 0, y: 0, ...viewport });
   const controls = await home.locator('.home-actions').boundingBox();
   assert.ok(controls.y > viewport.height / 2 && controls.y + controls.height <= viewport.height);
+  assert.deepEqual(await home.locator('.home-actions > *').allTextContents(), ['الرقص', 'النوم', 'القفز']);
   if (image) await page.screenshot({ path: image.replace('.png', '-home-mobile.png') });
   const danceButton = home.locator('[data-home-action="dance"]');
   const sleepButton = home.locator('[data-home-action="sleep"]');
@@ -725,7 +726,7 @@ try {
   await homeLink.click();
   await danceButton.click();
   await homeAudio('dance');
-  await home.getByRole('link', { name: 'يلا نصمم' }).click();
+  await navigation.getByRole('link', { name: 'التصميم' }).click();
   await homeAudio();
   const design = page.locator('#design');
   const lessonNext = design.locator('.design-next');
@@ -782,7 +783,7 @@ try {
     await lessonNext.click();
   }
   assert.equal(await design.getAttribute('data-scene'), 'done');
-  assert.ok(await phone.getByText('خلّيك قريبة من صديقاتك').isVisible());
+  assert.ok(await phone.getByText('خلّيك على تواصل مع صديقاتك').isVisible());
   const phoneBox = await phone.boundingBox();
   assert.ok(phoneBox.x >= 0 && phoneBox.x + phoneBox.width <= viewport.width);
   await design.getByRole('button', { name: 'إعادة الدرس' }).click();

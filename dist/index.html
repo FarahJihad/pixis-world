@@ -93,9 +93,9 @@
     <nav class="world-nav" aria-label="صفحات عالم بيكسي" dir="rtl">
       <a href="#" data-destination="welcome" aria-current="page"><svg class="icon" aria-hidden="true"><use href="#icon-welcome"/></svg><span>البداية</span></a>
       <a href="#emotions" data-destination="emotions"><svg class="icon" aria-hidden="true"><use href="#icon-notes"/></svg><span>المتطلبات</span></a>
+      <a href="#design" data-destination="design"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="m4 16-1 5 5-1 12-12-4-4Zm10-10 4 4M4 16l4 4"/></svg><span>التصميم</span></a>
       <a href="#home" data-destination="home"><svg class="icon" aria-hidden="true"><use href="#icon-home"/></svg><span>البيت</span></a>
       <a href="#surprise" data-destination="surprise"><svg class="icon" aria-hidden="true"><use href="#icon-mystery"/></svg><span>السر</span></a>
-      <a href="#design" data-destination="design"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="m4 16-1 5 5-1 12-12-4-4Zm10-10 4 4M4 16l4 4"/></svg><span>التصميم</span></a>
     </nav>
     <section class="intro" id="intro" dir="rtl" aria-labelledby="welcome-title" hidden>
       <h1 id="welcome-title" aria-label="مرحبًا بكم، أنا PIXI">
@@ -152,7 +152,6 @@
         <button type="button" data-home-action="dance" aria-pressed="false"><svg class="icon" aria-hidden="true"><use href="#icon-music"/></svg><span>الرقص</span></button>
         <button type="button" data-home-action="sleep" aria-pressed="false"><svg class="icon" aria-hidden="true"><use href="#icon-moon"/></svg><span>النوم</span></button>
         <button type="button" data-home-action="jump" aria-pressed="false"><svg class="icon" aria-hidden="true"><use href="#icon-jump"/></svg>القفز</button>
-        <a class="chapter-primary home-design" href="#design" data-destination="design">يلا نصمم</a>
       </div>
     </section>
     <div class="home-transition" aria-hidden="true">
@@ -182,7 +181,7 @@
           <p class="emergency-label" id="emergency-title">تنبيه!</p>
           <div class="emergency-character" aria-hidden="true"></div>
           <div class="emergency-bubble" role="status">
-            <span>انحبست في متاهة فيها ثلاثة بوابات مقفلة! ساعدوني!</span>
+            <span>علقت في متاهة فيها ثلاث بوابات مسكّرة! ساعدوني!</span>
           </div>
           <button class="emergency-primary" id="maze-begin" type="button">يلا ننقذ بيكسي!</button>
         </div>
@@ -203,12 +202,12 @@
       <div class="maze-victory" id="maze-victory" hidden>
         <div class="victory-card" role="status">
           <h2>انتهت المهمة!</h2>
-          <p class="victory-dialogue">شكراً يا مهندسات، أقدر أرجع لبيتي بسلام!</p>
+          <p class="victory-dialogue">شكرًا يا مهندسات! أقدر أرجع لبيتي بسلام.</p>
           <div id="request-summary" hidden>
             <h3>المتطلّبات اللي جمعتوها</h3>
             <ul id="saved-requests"></ul>
           </div>
-          <button class="chapter-primary maze-go-home" id="maze-go-home" type="button">الى البيت</button>
+          <button class="chapter-primary maze-go-home" id="maze-go-home" type="button">رجوع للبيت</button>
         </div>
       </div>
     </section>

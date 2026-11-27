@@ -1,14 +1,3 @@
-.home-actions .home-design {
-  min-height: 100%;
-  padding-inline: 4px;
-  border-radius: clamp(12px, 2vw, 22px);
-  background: #ffecd3;
-  border-color: #dfbb9c;
-  box-shadow: 0 3px 0 #dfbb9c;
-  text-decoration: none;
-  font-size: clamp(.75rem, 2.5vw, 1.18rem);
-}
-.home-design:focus-visible { outline: 2px solid var(--focus); outline-offset: 4px; }
 .world[data-screen="design"]::after { display: none; }
 .world[data-screen="design"] .brand { z-index: 2; }
 
@@ -469,9 +458,6 @@
 @media (max-width: 460px) {
   .world .world-nav { gap: 2px; }
   .world .world-nav a { gap: 4px; padding-inline: 5px; font-size: .68rem; }
-}
-@media (max-width: 340px) {
-  .home-actions button { font-size: .78rem; }
 }
 @media (max-height: 480px) and (orientation: landscape) {
   .design-board { top: max(65px, 15vh); bottom: 8px; transform: none; overflow: auto; align-content: center; gap: 7px; }

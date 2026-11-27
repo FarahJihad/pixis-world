@@ -14,34 +14,34 @@ const icon = (key) => '<svg viewBox="0 0 64 64" aria-hidden="true">' + art[key] 
 const rooms = [
   {
     id: 'theme', title: 'ألوان لطيفة',
-    line: 'أبغى موقعي يكون كيوت… بس محتارة، وش اللون اللي يناسب عالمي؟',
-    requirement: 'أبغى موقعي يكون بألوان لطيفة تناسب عالمي.',
+    line: 'خلّونا نختار لون حلو لموقعي. أي لون يناسب عالمي؟',
+    requirement: 'موقعي يحتاج ألوان لطيفة تناسب عالمي.',
     options: [['lavender', 'بنفسجي'], ['blush', 'وردي'], ['mint', 'نعناعي']]
   },
   {
     id: 'decor', title: 'ديكور جميل',
-    line: 'أحس عالمي ناقصه شيء لطيف… وش ممكن نضيف؟',
-    requirement: 'أبغى إضافة ديكور لطيف يزين عالمي.',
+    line: 'أحس إن عالمي ناقصه شي حلو. أي زينة نضيف؟',
+    requirement: 'نضيف زينة تخلّي عالمي أحلى.',
     options: [['flower', 'وردة'], ['star', 'نجمة'], ['plant', 'نبتة']]
   },
   {
     id: 'sky', title: 'أجواء مميزة',
-    line: 'وأبغى عالمي يتغير معي… تبغونه صباح هادي، غروب جميل، أو ليل لطيف؟',
-    requirement: 'أبغى أقدر أغيّر أجواء عالمي.',
+    line: 'خلّونا نغيّر أجواء عالمي. نختار صباح هادي، غروب دافي، أو ليل؟',
+    requirement: 'أقدر أغيّر أجواء عالمي.',
     options: [['morning', 'صباح'], ['sunset', 'غروب'], ['night', 'ليل']]
   }
 ];
 
 const reactions = {
-  lavender: ['excited', 'واااو! البنفسجي مرّة يشبه عالمي!'],
+  lavender: ['excited', 'واو! البنفسجي يناسب عالمي!'],
   blush: ['curious', 'الوردي ناعم وحلو… ممكن نعتمده!'],
-  mint: ['displeased', 'ممم… النعناعي حلو، بس ما أحسّه يشبهني.'],
-  flower: ['excited', 'ياااي! الوردة خلت عالمي ألطف!'],
+  mint: ['displeased', 'ممم… النعناعي حلو، بس ما أحس إنه يناسبني.'],
+  flower: ['excited', 'الوردة خلّت عالمي أحلى!'],
   star: ['happy', 'النجمة أضافت لمعة حلوة للرف!'],
-  plant: ['displeased', 'عندي نباتات كثير أصلًا… أبي شي مختلف!'],
+  plant: ['displeased', 'عندي نباتات كثيرة. خلّونا نجرّب شي مختلف!'],
   morning: ['happy', 'صباح هادي! أحس عالمي صار منعش.'],
-  sunset: ['excited', 'واااو… الغروب مرّة جميل من نافذتي!'],
-  night: ['displeased', 'الليل حلو، بس عالمي صار أغمق من اللي أبيه.']
+  sunset: ['excited', 'واو! منظر الغروب من نافذتي حلو!'],
+  night: ['displeased', 'الليل حلو، بس عالمي صار أغمق من اللازم.']
 };
 const documentRows = [
   ['الألوان', 'لوحة ألوان % تناسب عالم بيكسي.', {
@@ -167,11 +167,11 @@ export function createRequests(actions) {
     forward();
     if (scene < 0) {
       setPhase('opening');
-      say('هلااا بنات! عندي أفكار كثيرة لموقعي… بس محتاجة مساعدتكم عشان أوضحها!');
+      say('أهلًا يا بنات! عندي أفكار كثيرة لموقعي، ومحتاجة مساعدتكم عشان أرتّبها.');
       actions.pose('curious');
       forward('نبدأ نفهم أفكار بيكسي');
       next.onclick = () => {
-        say('قبل ما نصمّم أو نبرمج، خلّونا نفهم وش تبي بيكسي.');
+        say('قبل ما نصمّم أو نبرمج، خلّونا نحدّد مع بعض اللي أحتاجه في موقعي.');
         forward('نختار الألوان');
         next.onclick = advance;
       };
@@ -343,7 +343,7 @@ export function createRequests(actions) {
         actions.pose('excited');
         actions.perform('happy');
         effect('happy');
-        say('ياااي! الحين عرفت بالضبط وش أبغى في موقعي!');
+        say('رائع! صرت أعرف بالضبط اللي أحتاجه في موقعي.');
         next.onclick = () => actions.done(next);
         forward('يلا نصمم');
         fileTitle.focus({ preventScroll: true });
