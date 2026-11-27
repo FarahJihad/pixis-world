@@ -35,7 +35,8 @@ export function createChapters(world, status) {
   const requests = createRequests({
     pose: setMood,
     perform(mood) { perform?.(mood); },
-    clear() { perform?.(''); }
+    clear() { perform?.(''); },
+    done(button) { transition(button, 'design', 'next'); }
   });
 
   function playWelcome(audible = false) {

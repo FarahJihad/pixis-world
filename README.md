@@ -26,7 +26,7 @@ The workshop opens automatically when loaded. The speaker icon in the corner con
 
 Run `npm ci` to install development dependencies. After changing the character, run `node scripts/export-model.mjs` to regenerate the model. You can also import the GLB into Blender using **File → Import → glTF 2.0**. Keep the named eye, mouth, arm, and foot objects when re-exporting it for the site. The browser applies the interactive animations to these named parts at runtime.
 
-After the maze, go to the house and choose **يلا نصمم**. The **التصميم** navigation tab also opens the lesson directly. Open the gift, try the mug, and then zoom in on PIXI’s phone. For each rule, choose **طبّقي القاعدة** to update the same app. The last rule enables a simulated send action so the audience can see immediate feedback. The lesson can be replayed or closed by returning to the house.
+In Requirements, confirm all three ideas and wait for PIXI’s requirements file. Choose **يلا نصمم** to start the Design lesson. The house button and the **التصميم** navigation tab also open it directly. Click the gift, try the mug, and then zoom in on PIXI’s phone. For each rule, choose **طبّقي القاعدة** to update the same app. The last rule enables a simulated send action so the audience can see immediate feedback. The lesson can be replayed or closed by returning to the house.
 
 The included Three.js modules are rebuilt by `node scripts/vendor.mjs`. Run `node scripts/offline.mjs PIXI-preview.html` to generate the standalone preview.
 

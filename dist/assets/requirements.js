@@ -344,6 +344,8 @@ export function createRequests(actions) {
         actions.perform('happy');
         effect('happy');
         say('ياااي! الحين عرفت بالضبط وش أبغى في موقعي!');
+        next.onclick = () => actions.done(next);
+        forward('يلا نصمم');
         fileTitle.focus({ preventScroll: true });
       }, 1930);
     }, 680);

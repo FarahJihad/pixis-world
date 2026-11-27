@@ -232,6 +232,9 @@ function attachInteraction(scene, camera, renderer, scenery, pool, pixi, mazeAva
       homeView(delta, effects);
       return;
     }
+    const inStory = screen === 'emotions';
+    scenery.workshop(inStory && story.dataset.theme, inStory && story.dataset.sky,
+      !inStory || !effects ? 1 : 1 - Math.exp(-delta * 5));
     if (screen === 'design') {
       designView ??= createDesignView(renderer, designAvatar, scene, scenery);
       pivot.visible = false;
@@ -245,9 +248,6 @@ function attachInteraction(scene, camera, renderer, scenery, pool, pixi, mazeAva
       stage.append(renderer.domElement);
       resize();
     }
-    const inStory = screen === 'emotions';
-    scenery.workshop(inStory && story.dataset.theme, inStory && story.dataset.sky,
-      !inStory || !effects ? 1 : 1 - Math.exp(-delta * 5));
     if (screen === 'surprise') {
       const { maze } = chapters;
       mazeView ??= createMazeView(mazeAvatar, maze.clickCharacter);

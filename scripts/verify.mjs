@@ -322,10 +322,6 @@ try {
   assert.equal(await page.evaluate(() => window.pixiAlarmTracks.length), 1);
   await requestLink.click();
 
-  const next = page.locator('#next');
-  const choices = page.locator('[data-choice]');
-  const requestEffect = page.getByRole('button', { name: 'تشغيل مؤثّر الطلب' });
-  const sound = page.locator('#sound');
   await sound.click();
   assert.equal(await sound.getAttribute('aria-pressed'), 'false');
   const mutedCount = await page.evaluate(() => window.pixiOscillators);
@@ -334,7 +330,6 @@ try {
     addEventListener('pixi:reaction', ({ detail }) => window.storyReactions.push(detail.reaction));
   });
 
-  await page.setViewportSize({ width: 1280, height: 720 });
   await next.click();
   assert.match(await line.textContent(), /قبل ما نصمّم أو نبرمج/);
   await next.click();
@@ -396,6 +391,7 @@ try {
   await next.click();
   assert.equal(await savedCards.count(), 3);
   await next.click();
+  assert.equal(await next.isVisible(), false);
   const file = page.locator('.room-summary');
   await file.waitFor();
   assert.equal(await file.locator('li').count(), 3);
@@ -407,12 +403,18 @@ try {
   assert.equal(await story.getAttribute('data-sky'), 'sunset');
   if (image) await page.screenshot({ path: image.replace('.png', '-file.png'), animations: 'disabled' });
   await line.waitFor();
-  assert.equal(await next.isVisible(), false);
+  assert.equal(await next.isVisible(), true);
+  assert.equal(await next.textContent(), 'يلا نصمم');
   assert.equal(await file.isVisible(), true);
-  assert.equal(await page.locator('#request-handoff').count(), 0);
   assert.equal(new URL(page.url()).hash, '#emotions');
   assert.equal(await page.evaluate(() => window.pixiOscillators), mutedCount);
   assert.deepEqual(await page.evaluate(() => [...new Set(window.storyReactions)].sort()), ['displeased', 'happy', 'surprised']);
+  await next.click();
+  await page.waitForURL('**/#design');
+  await page.getByRole('button', { name: 'افتحي هدية بيكسي' }).waitFor();
+  await page.goBack();
+  await next.waitFor();
+  assert.equal(await file.locator('li').count(), 3);
   await sound.click();
   assert.equal(await sound.getAttribute('aria-pressed'), 'true');
 
