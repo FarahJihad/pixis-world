@@ -17,7 +17,6 @@ export function createChapters(world, status) {
     surprise: document.querySelector('#surprise')
   };
   const soundButton = document.querySelector('#sound');
-  const requestEffect = document.querySelector('#listen-request');
   const begin = document.querySelector('#begin');
   const destinations = [...document.querySelectorAll('[data-destination]')];
   const state = { screen: 'welcome', emotion: '' };
@@ -30,20 +29,10 @@ export function createChapters(world, status) {
     else delete world.dataset.emotion;
   }
 
-  function playRequestEffect() {
-    sound.play('concerned');
-    if (requests.waiting) perform?.('concerned');
-  }
-
   const requests = createRequests({
-    effect: playRequestEffect,
     pose: setMood,
-    accept() {
-      sound.play('accept');
-      perform?.('happy');
-    },
-    retry() { sound.play('retry'); perform?.('concerned'); },
-    done() { transition(document.querySelector('#next'), 'surprise', 'next'); }
+    perform(mood) { perform?.(mood); },
+    clear() { perform?.(''); }
   });
 
   function playWelcome(audible = false) {
@@ -53,6 +42,7 @@ export function createChapters(world, status) {
 
   function show(screen, focus, playEffects) {
     if (screen === state.screen) return;
+    if (state.screen === 'emotions') requests.leave();
     state.screen = screen;
     world.dataset.screen = screen;
     panel.emotions.hidden = screen !== 'emotions';
@@ -67,10 +57,7 @@ export function createChapters(world, status) {
     if (screen === 'welcome' && ready) playWelcome(playEffects && sound.enabled);
     else dialogue.hide();
     setMood('');
-    if (screen === 'emotions') {
-      requests.enter();
-      if (playEffects && requests.waiting) playRequestEffect();
-    }
+    if (screen === 'emotions') requests.enter();
     if (screen === 'surprise') {
       requests.updateSummary();
       if (ready) maze.enter();
@@ -111,7 +98,6 @@ export function createChapters(world, status) {
   function syncSound() {
     soundButton.setAttribute('aria-pressed', String(sound.enabled));
     soundButton.title = sound.enabled ? 'إيقاف الصوت' : 'تشغيل الصوت';
-    requestEffect.disabled = !sound.enabled;
   }
 
   function transition(button, screen, cue) {
@@ -152,13 +138,7 @@ export function createChapters(world, status) {
       ready = true;
       syncSound();
       if (state.screen === 'welcome') playWelcome(sound.canPlayAutomatically());
-      else if (state.screen === 'emotions' && sound.canPlayAutomatically() && requests.waiting) playRequestEffect();
       else if (state.screen === 'surprise') maze.enter();
-    },
-    reactToRequest() {
-      if (state.screen !== 'emotions' || !requests.waiting) return false;
-      playRequestEffect();
-      return true;
     },
     connect(onTransfer, onReaction, onWelcome) {
       transfer = onTransfer;
