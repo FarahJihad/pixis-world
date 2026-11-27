@@ -78,6 +78,16 @@ function attachInteraction(scene, camera, renderer, scenery, pool, pixi, mazeAva
   const ray = new T.Raycaster();
   const rightArmRest = arms[1].position.clone();
   const pointer = new T.Vector2();
+  // Keep the story props aligned with the rug, shelf, and window.
+  const story = document.querySelector('#emotions');
+  const storyAnchors = [
+    [story.querySelector('[data-spot="theme"]'), new T.Vector3(1.82, .12, 1.75)],
+    [story.querySelector('[data-spot="decor"]'), new T.Vector3(3.60, 3.63, -7.85)],
+    [story.querySelector('[data-spot="sky"]'), new T.Vector3(-2.8, 2.33, -7.95)],
+    [story.querySelector('.room-decoration'), new T.Vector3(3.59, 2.56, -7.76)]
+  ];
+  const storyTrail = story.querySelector('.room-trail polyline');
+  const projected = new T.Vector3();
   const hitBody = pivot.children.filter((child) => child.isMesh || child.name.includes('Arm'));
   const surpriseZ = surprise.position.z;
   const started = performance.now();
@@ -87,7 +97,7 @@ function attachInteraction(scene, camera, renderer, scenery, pool, pixi, mazeAva
   let reaction = '', rotationIndex = 0, concern = 0, framing = 0, mazeView, homeView;
   let turned = 0, turnGoal = 0, pitch = 0, pitchGoal = 0, drag;
   let lastBlink = .85, blinkDelay = 3.2, hoverTime = 0;
-  let lookX = 0, lookY = 0;
+  let lookX = 0, lookY = 0, sleep = 0, interest = 0, displeasure = 0;
   let touchActivation = false;
   let inCeremony = false;
   let effectWasReduced = reduced.matches;
@@ -107,12 +117,13 @@ function attachInteraction(scene, camera, renderer, scenery, pool, pixi, mazeAva
     reaction = next;
     reactionStart = seconds();
     const lines = { happy: 'قفزت بيكسي من الفرح.', wave: 'لوّحت بيكسي.', surprised: 'تفاجأت بيكسي.', concerned: 'بيكسي متضايقة وعندها طلب.' };
-    status.textContent = lines[reaction];
+    if (!next) return;
+    status.textContent = lines[reaction] ?? '';
     window.dispatchEvent(new CustomEvent('pixi:reaction', { detail: { reaction } }));
   }
 
   function react() {
-    if (chapters.reactToRequest()) return;
+    if (chapters.state.screen === 'emotions') return;
     const next = chapters.state.emotion || reactions[rotationIndex++ % reactions.length];
     play.play(next);
     animateReaction(next);
@@ -224,6 +235,9 @@ function attachInteraction(scene, camera, renderer, scenery, pool, pixi, mazeAva
       stage.append(renderer.domElement);
       resize();
     }
+    const inStory = screen === 'emotions';
+    scenery.workshop(inStory && story.dataset.theme, inStory && story.dataset.sky,
+      !inStory || !effects ? 1 : 1 - Math.exp(-delta * 5));
     if (screen === 'surprise') {
       const { maze } = chapters;
       mazeView ??= createMazeView(mazeAvatar, maze.clickCharacter);
@@ -256,12 +270,21 @@ function attachInteraction(scene, camera, renderer, scenery, pool, pixi, mazeAva
     }
     const close = effects ? Math.max(0, 1 - Math.abs((time - lastBlink - .115) / .115)) : 0;
     const surprised = reaction === 'surprised' ? easing(pulse * 1.9) : 0;
-    const concernTarget = emotion === 'concerned' ? 1 : reaction === 'concerned' ? pulse * .55 : 0;
+
+    sleep = follow(sleep, inStory && emotion === 'sleeping' ? 1 : 0, effects ? 6 : 26, delta);
+    interest = follow(interest, inStory && ['curious', 'confused', 'excited'].includes(emotion) ? 1 : 0, 6, delta);
+    const roomGlance = inStory && effects && emotion === 'looking' ? Math.sin(time * 3.5) * .26 : 0;
+    displeasure = inStory ? follow(displeasure, emotion === 'displeased' ? 1 : 0, 9, delta) : 0;
+    const shake = inStory && effects && reaction === 'displeased' ? Math.sin(activeReaction * 22) * pulse * .17 : 0;
+    const concernTarget = emotion === 'concerned' || (inStory && emotion === 'displeased') ? 1 :
+      reaction === 'concerned' ? pulse * .55 : 0;
     concern = follow(concern, concernTarget, effects ? 7 : 26, delta);
-    const jump = effects && reaction === 'happy' ? pulse ** 1.55 * .43 : 0;
+    const browAngle = .30 * concern - .73 * displeasure;
+    const jump = effects && reaction === 'happy' ? pulse ** 1.55 * .43 :
+      effects && inStory && reaction === 'surprised' ? pulse ** 2 * .16 : 0;
     const wave = reaction === 'wave' ? easing(pulse * 1.55) : 0;
     const waveMotion = wave + ceremony * .32;
-    const bounce = effects ? Math.sin(time * 2.04) * .039 : 0;
+    const bounce = effects ? Math.sin(time * 2.04) * (inStory ? .014 : .039) * (1 - sleep) : 0;
     const breath = effects ? Math.sin(time * 1.8) * .014 : 0;
     const mouse = !drag && !inCeremony && time - hoverTime < 7 && effects ? pointer : null;
     lookX = follow(lookX, mouse?.x ?? 0, 5, delta);
@@ -269,17 +292,17 @@ function attachInteraction(scene, camera, renderer, scenery, pool, pixi, mazeAva
     turned = follow(turned, turnGoal, reduced.matches ? 28 : 9, delta);
     pitch = follow(pitch, pitchGoal, reduced.matches ? 28 : 8, delta);
 
-    pivot.position.set(0, 1.345 + bounce + jump + (1 - entrance) * .84 - concern * .05, 0);
-    pivot.rotation.set(pitch - lookY * .069 + concern * .085,
-      turned + lookX * .19 + (1 - entrance) * -.82 + concern * .08,
-      (effects ? Math.sin(time * 1.22) * .025 - wave * .075 : 0) - concern * .068 - greeting * .045);
+    pivot.position.set(0, 1.345 + bounce + jump + (1 - entrance) * .84 - concern * .05 - sleep * .07, 0);
+    pivot.rotation.set(pitch - lookY * .069 + concern * .085 + displeasure * .055 + sleep * .16,
+      turned + lookX * .19 + (1 - entrance) * -.82 + concern * .08 + shake + roomGlance,
+      (effects ? Math.sin(time * 1.22) * .025 - wave * .075 : 0) - concern * .068 - greeting * .045 + (effects && inStory ? interest * .075 : 0));
     pivot.scale.set(1 - breath - jump * .041, 1 + breath + jump * .071 - concern * .036, 1 - breath);
     for (const [i, eye] of eyes.entries()) {
       eye.scale.x = 1 + surprised * .10;
-      eye.scale.y = Math.max(.071, (1 - easing(close)) * (1 + surprised * .18 - concern * .22));
+      eye.scale.y = Math.max(.071, (1 - Math.max(easing(close), sleep)) * (1 + surprised * .18 - concern * .22 + interest * .09));
       eye.rotation.z = (i === 0 ? .13 : -.13) * concern;
-      brows[i].position.z = browRest[i] + concern * .169;
-      brows[i].rotation.z = (i === 0 ? -.30 : .30) * concern;
+      brows[i].position.z = browRest[i] + concern * .169 + interest * .08;
+      brows[i].rotation.z = (i === 0 ? -1 : 1) * browAngle;
     }
     for (const pupil of gaze) {
       pupil.position.x = lookX * .036;
@@ -322,6 +345,21 @@ function attachInteraction(scene, camera, renderer, scenery, pool, pixi, mazeAva
     camera.lookAt(0, (wide ? 1.47 : 1.53) + framing * .04, 0);
     pool.intensity = 13 + ceremony * 11;
     scenery.update(ceremony, jump + (1 - entrance) * .84, pivot.position.x);
+    if (inStory && viewportWidth) {
+      camera.updateMatrixWorld();
+      const points = storyAnchors.map(([element, point]) => {
+        projected.copy(point).project(camera);
+        const x = clamp((projected.x + 1) / 2, .16, .84);
+        const y = clamp((1 - projected.y) / 2, .14, .84);
+        // Subpixel camera drift should not move the click target every frame.
+        element.style.setProperty('--spot-x', Math.round(x * viewportWidth / 2) * 2 + 'px');
+        element.style.setProperty('--spot-y', Math.round(y * viewportHeight / 2) * 2 + 'px');
+        return x * 1000 + ',' + y * 1000;
+      });
+      if (story.dataset.phase === 'gather') {
+        storyTrail.setAttribute('points', points.slice(0, 3).join(' '));
+      }
+    }
     renderer.render(scene, camera);
   }
 

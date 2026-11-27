@@ -107,24 +107,40 @@
       </div>
     </section>
     <section class="chapter" id="emotions" dir="rtl" aria-labelledby="emotions-title" hidden>
-      <div class="chapter-panel">
-        <h1 id="emotions-title" tabindex="-1">المتطلبات</h1>
-        <div class="story-card">
-          <div class="story-header">
-            <p id="request-step"></p>
-            <button class="round-button" id="listen-request" type="button" aria-label="تشغيل مؤثّر الطلب"><svg class="icon" aria-hidden="true"><use href="#icon-volume"/></svg></button>
-          </div>
-          <blockquote id="request-line" tabindex="-1"></blockquote>
-          <div id="request-quiz">
-            <p class="request-prompt" id="request-prompt">شو المتطلّب اللي فهمتيه من كلامها؟</p>
-            <div class="request-choices" role="group" aria-labelledby="request-prompt">
-              <button type="button" data-choice="0"></button>
-              <button type="button" data-choice="1"></button>
-            </div>
-          </div>
-          <p id="request-feedback" role="status" hidden></p>
-          <button class="chapter-primary request-next" id="next" type="button" hidden></button>
+      <h1 class="room-sr" id="emotions-title" tabindex="-1">متطلبات بيكسي</h1>
+      <svg class="room-trail" aria-hidden="true" viewBox="0 0 1000 1000" preserveAspectRatio="none"><polyline/></svg>
+      <div class="room-spot" data-spot="theme">
+        <div class="room-marker" hidden></div>
+        <div class="room-objects" role="group" aria-label="ألوان العالم"></div>
+      </div>
+      <div class="room-spot" data-spot="decor">
+        <div class="room-marker" hidden></div>
+        <div class="room-objects" role="group" aria-label="زينة العالم"></div>
+      </div>
+      <div class="room-spot" data-spot="sky">
+        <div class="room-marker" hidden></div>
+        <div class="room-objects" role="group" aria-label="أجواء النافذة"></div>
+      </div>
+      <div class="room-decoration" aria-hidden="true" hidden></div>
+      <div class="room-particles" aria-hidden="true"></div>
+      <div class="room-dialogue">
+        <blockquote id="request-line" tabindex="-1" aria-live="polite"></blockquote>
+        <p id="request-comparison" tabindex="-1" aria-live="polite" hidden></p>
+        <p id="request-feedback" role="status" hidden></p>
+        <button id="next" type="button"></button>
+      </div>
+      <section class="room-summary" aria-labelledby="room-file-title" hidden>
+        <div class="room-file-paper">
+          <span class="room-file-clip" aria-hidden="true"></span>
+          <h2 id="room-file-title" tabindex="-1">ملف متطلبات <span>بيكسي</span></h2>
+          <ol></ol>
         </div>
+        <span class="room-file-glints" aria-hidden="true"><i></i><i></i><i></i></span>
+      </section>
+      <div class="room-controls" role="group" aria-label="تحكّم العرض">
+        <button type="button" id="request-previous">السابق</button>
+        <button type="button" id="request-replay">إعادة المشهد</button>
+        <button type="button" id="request-reset">البدء من جديد</button>
       </div>
     </section>
     <section class="home-chapter" id="home" dir="rtl" aria-labelledby="home-title" data-home-action="idle" hidden>

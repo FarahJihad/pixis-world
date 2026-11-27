@@ -225,12 +225,19 @@ try {
   await page.locator('#emotions-title').waitFor();
   assert.equal(await begin.getAttribute('aria-disabled'), null);
   assert.equal(new URL(page.url()).hash, '#emotions');
-  assert.equal(await page.locator('.world').getAttribute('data-emotion'), 'concerned');
-  assert.match(await page.locator('#request-line').textContent(), /أفكاري بتضيع/);
+  const mood = page.locator('.world');
+  const line = page.locator('#request-line');
+  const next = page.locator('#next');
+  const compare = page.locator('#request-comparison');
+  const savedCards = page.locator('#emotions .room-marker[data-confirmed]:visible');
   const requestLink = page.locator('[data-destination="emotions"]');
   const surpriseLink = page.locator('[data-destination="surprise"]');
-  assert.equal(await requestLink.textContent(), 'المتطلبات');
-  assert.equal(await page.locator('#emotions-title').textContent(), 'المتطلبات');
+  const idea = (key) => page.locator('#emotions button[data-idea="' + key + '"]');
+  assert.equal(await mood.getAttribute('data-emotion'), 'curious');
+  const story = page.locator('#emotions');
+  const decoration = page.locator('.room-decoration');
+  assert.match(await line.textContent(), /محتاجة مساعدتكم/);
+  assert.equal(await page.locator('.room-marker:visible').count(), 3);
   assert.equal(await requestLink.getAttribute('aria-current'), 'page');
   if (image) {
     await page.waitForTimeout(1050);
@@ -318,30 +325,98 @@ try {
   const next = page.locator('#next');
   const choices = page.locator('[data-choice]');
   const requestEffect = page.getByRole('button', { name: 'تشغيل مؤثّر الطلب' });
+  const sound = page.locator('#sound');
   await sound.click();
   assert.equal(await sound.getAttribute('aria-pressed'), 'false');
-  assert.equal(await requestEffect.isEnabled(), false);
   const mutedCount = await page.evaluate(() => window.pixiOscillators);
-  await choices.nth(1).click();
-  assert.equal(await choices.nth(1).getAttribute('data-retry'), '');
-  assert.match(await page.locator('#request-feedback').textContent(), /شو لازم يعمل الدفتر/);
-  assert.equal(await next.isVisible(), false);
-  await choices.nth(0).click();
-  assert.equal(await choices.nth(0).getAttribute('data-right'), '');
-  assert.equal(await page.evaluate(() => window.pixiOscillators), mutedCount);
-  await sound.click();
-  assert.equal(await sound.getAttribute('aria-pressed'), 'true');
-  for (const [choice, message] of [[1, /بتضايق/], [0, /بضيع بين الأفكار/]]) {
-    await next.click();
-    assert.match(await page.locator('#request-line').textContent(), message);
-    assert.equal(await page.locator('.world').getAttribute('data-emotion'), 'concerned');
-    await requestEffect.click();
-    await choices.nth(choice).click();
-    assert.equal(await choices.nth(choice).getAttribute('data-right'), '');
-  }
+  await page.evaluate(() => {
+    window.storyReactions = [];
+    addEventListener('pixi:reaction', ({ detail }) => window.storyReactions.push(detail.reaction));
+  });
 
   await page.setViewportSize({ width: 1280, height: 720 });
   await next.click();
+  assert.match(await line.textContent(), /قبل ما نصمّم أو نبرمج/);
+  await next.click();
+  assert.equal(await mood.getAttribute('data-emotion'), 'confused');
+  const messages = [];
+  async function reactTo(key, attribute, message, accepted = true) {
+    await idea(key).click();
+    assert.equal(await story.getAttribute('data-' + attribute), key);
+    await page.waitForFunction((expected) => document.querySelector('#request-line').textContent.includes(expected), message);
+    messages.push(await line.textContent());
+    if (accepted) await compare.waitFor();
+    else {
+      assert.equal(await mood.getAttribute('data-emotion'), 'displeased');
+      assert.equal(await next.isVisible(), false);
+    }
+  }
+
+  const palette = await page.locator('[data-spot="theme"] .room-objects').boundingBox();
+  assert.ok(Math.abs(palette.x + palette.width / 2 - 800) < 8 && palette.y >= 690);
+  await reactTo('blush', 'theme', 'الوردي ناعم');
+  await reactTo('mint', 'theme', 'ما أحسّه يشبهني', false);
+  await reactTo('lavender', 'theme', 'البنفسجي مرّة');
+  if (image) await page.screenshot({ path: image.replace('.png', '-theme.png'), animations: 'disabled' });
+  assert.match(await compare.textContent(), /بألوان لطيفة/);
+  await next.click();
+  assert.equal(await savedCards.count(), 1);
+  await page.locator('#request-replay').click();
+  await idea('lavender').click();
+  await compare.waitFor();
+  await next.click();
+  assert.equal(await savedCards.count(), 1);
+  await next.click();
+
+  await reactTo('plant', 'decor', 'عندي نباتات كثير', false);
+  await reactTo('flower', 'decor', 'الوردة خلت');
+  await reactTo('star', 'decor', 'النجمة أضافت');
+  assert.equal(await decoration.getAttribute('data-item'), 'star');
+  const shelf = await decoration.boundingBox();
+  const decorationChoices = await page.locator('[data-spot="decor"] .room-objects').boundingBox();
+  assert.ok(decorationChoices.x >= shelf.x + shelf.width + 35);
+  if (image) await page.screenshot({ path: image.replace('.png', '-decor.png'), animations: 'disabled' });
+  await next.click();
+  assert.equal(await savedCards.count(), 2);
+  await next.click();
+  await page.locator('#request-previous').click();
+  assert.equal(await decoration.getAttribute('data-item'), 'star');
+  await idea('flower').click();
+  await compare.waitFor();
+  await next.click();
+  await next.click();
+
+  const skyChoices = await page.locator('[data-spot="sky"] .room-objects').boundingBox();
+  assert.ok(skyChoices.x < 100 && skyChoices.y >= 425);
+  await reactTo('morning', 'sky', 'أحس عالمي صار منعش');
+  await reactTo('night', 'sky', 'أغمق من اللي أبيه', false);
+  if (image) await page.screenshot({ path: image.replace('.png', '-sky.png'), animations: 'disabled' });
+  await reactTo('sunset', 'sky', 'الغروب مرّة جميل');
+  assert.equal(new Set(messages).size, 9);
+  await next.click();
+  assert.equal(await savedCards.count(), 3);
+  await next.click();
+  const file = page.locator('.room-summary');
+  await file.waitFor();
+  assert.equal(await file.locator('li').count(), 3);
+  assert.equal(await file.locator('.room-file-symbol svg[aria-hidden="true"]').count(), 3);
+  assert.doesNotMatch(await file.textContent(), /\p{Extended_Pictographic}|✓/u);
+  for (const label of ['بنفسجية', 'وردة', 'غروب دافئ']) assert.ok((await file.textContent()).includes(label));
+  assert.equal(await story.getAttribute('data-theme'), 'lavender');
+  assert.equal(await decoration.getAttribute('data-item'), 'flower');
+  assert.equal(await story.getAttribute('data-sky'), 'sunset');
+  if (image) await page.screenshot({ path: image.replace('.png', '-file.png'), animations: 'disabled' });
+  await line.waitFor();
+  assert.equal(await next.isVisible(), false);
+  assert.equal(await file.isVisible(), true);
+  assert.equal(await page.locator('#request-handoff').count(), 0);
+  assert.equal(new URL(page.url()).hash, '#emotions');
+  assert.equal(await page.evaluate(() => window.pixiOscillators), mutedCount);
+  assert.deepEqual(await page.evaluate(() => [...new Set(window.storyReactions)].sort()), ['displeased', 'happy', 'surprised']);
+  await sound.click();
+  assert.equal(await sound.getAttribute('aria-pressed'), 'true');
+
+  await surpriseLink.click();
   await page.locator('#surprise-title').waitFor();
   assert.equal(new URL(page.url()).hash, '#surprise');
   await page.locator('#maze-canvas canvas').waitFor();
@@ -481,7 +556,14 @@ try {
   await page.locator('#emotions-title').waitFor();
   await footstepsStopped(5, false);
 
-  for (const [width, height] of [[1920, 1080], [390, 844]]) {
+  await page.locator('#request-reset').click();
+  assert.equal(await savedCards.count(), 0);
+  assert.equal(await decoration.isVisible(), false);
+  assert.equal(await story.getAttribute('data-theme'), null);
+  assert.equal(await story.getAttribute('data-sky'), null);
+  assert.equal(await page.locator('#request-previous').isDisabled(), true);
+
+  for (const [width, height] of [[1920, 1080], [1280, 720], [390, 844]]) {
     await page.setViewportSize({ width, height });
     await page.waitForFunction(([w, h]) => {
       const { width, height } = document.querySelector('canvas').getBoundingClientRect();

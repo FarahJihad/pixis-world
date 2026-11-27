@@ -79,12 +79,14 @@ function windowLight(scene) {
   mesh(back, new T.ShapeGeometry(arch(4.83, 4.78), 44), trim, 0, 0, .055);
 
   const sky = new T.ShaderMaterial({
+    uniforms: { atmosphere: { value: new T.Vector3() } },
     vertexShader: `
       varying vec2 place;
       void main() { place=position.xy; gl_Position=projectionMatrix*modelViewMatrix*vec4(position,1.); }
     `,
     fragmentShader: `
       varying vec2 place;
+      uniform vec3 atmosphere;
       float cloud(vec2 p,vec2 c,vec2 s) { return 1.-smoothstep(.72,1.05,length((p-c)/s)); }
       void main() {
         vec3 low = vec3(.97,.91,.81), high = vec3(.72,.82,.86);
@@ -94,6 +96,18 @@ function windowLight(scene) {
         float s=cloud(place,vec2(.95,3.30),vec2(.77,.14))+cloud(place,vec2(.65,3.43),vec2(.42,.13));
         s+=cloud(place,vec2(-1.46,2.48),vec2(.54,.13));
         c=mix(c,vec3(1.,.98,.92),clamp(s,0.,.72));
+        float height = smoothstep(0.,4.3,place.y);
+        float horizon = smoothstep(hills-.03,hills+.03,place.y);
+        vec3 morning = mix(vec3(1.,.94,.75),vec3(.52,.77,.91),height);
+        vec3 sunset = mix(vec3(1.,.62,.43),vec3(.56,.38,.68),height);
+        vec3 night = mix(vec3(.41,.46,.69),vec3(.13,.17,.35),height);
+        sunset = mix(sunset,vec3(1.,.9,.64),cloud(place,vec2(-.9,2.55),vec2(.28)));
+        night = mix(night,vec3(.98,.91,.75),cloud(place,vec2(-.92,3.1),vec2(.25)));
+        vec2 star = fract((place+vec2(.44,.19))*vec2(2.37,2.91))-.5;
+        night += .55*(1.-smoothstep(.024,.073,length(star)))*smoothstep(1.9,3.,place.y);
+        c = mix(c,mix(vec3(.62,.77,.61),morning,horizon),atmosphere.x);
+        c = mix(c,mix(vec3(.64,.49,.53),sunset,horizon),atmosphere.y);
+        c = mix(c,mix(vec3(.27,.32,.45),night,horizon),atmosphere.z);
         gl_FragColor=vec4(c,1.);
       }
     `
@@ -103,6 +117,7 @@ function windowLight(scene) {
   box(back, 4.42, .104, .102, trim, 0, 2.24, .16);
   const sill = panel(back, 5.23, .14, .063, .39, clay(0xd7ae97), 0, .028, .064);
   sill.receiveShadow = true;
+  return sky.uniforms.atmosphere.value;
 }
 
 function pot(parent, x, y, z, size, color) {
@@ -239,7 +254,7 @@ export function createScenery(scene) {
   floor.rotation.x = -Math.PI / 2;
   floor.receiveShadow = true;
   sunPatch(scene);
-  windowLight(scene);
+  const atmosphere = windowLight(scene);
   supplies(scene);
   rug(scene);
   const baseShadow = diffuseShadow(scene, 3.8, 2.70, .10, .009, -.065, .62);
@@ -248,7 +263,19 @@ export function createScenery(scene) {
   });
   const glow = mesh(scene, new T.RingGeometry(.95, 1.02, 112), sparkle, 0, .032, 0);
   glow.rotation.x = -Math.PI / 2;
+  const wallColors = {
+    lavender: new T.Color(0xe3ccf3), blush: new T.Color(0xf5c4d4), mint: new T.Color(0xbde3d4)
+  };
+  const originalWall = wall.color.clone();
+  const skies = {
+    morning: new T.Vector3(1, 0, 0), sunset: new T.Vector3(0, 1, 0), night: new T.Vector3(0, 0, 1)
+  };
+  const originalSky = new T.Vector3();
   return {
+    workshop(theme, sky, blend) {
+      wall.color.lerp(wallColors[theme] ?? originalWall, blend);
+      atmosphere.lerp(skies[sky] ?? originalSky, blend);
+    },
     update(ceremony, elevation, characterX) {
       baseShadow.material.uniforms.alpha.value = .63 - Math.min(elevation, 1) * .51;
       baseShadow.scale.setScalar(1 + elevation * .19);
